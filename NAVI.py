@@ -382,9 +382,7 @@ class cameraGUI():
     def run_p(cmd):
 
         proc=subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE)
-
         result=""
-        
         for line in proc.stdout:
             result=str(line,"utf-8")
 
@@ -414,51 +412,30 @@ class cameraGUI():
             self.qrScanner()
 
     def qrScanner(self):
-        # ensures the result is found by setting found to false
-        found=False
 
-        while self.scan == True:
 
-            cameraGUI.camCapture(SET.PREVIEW_FILE,SET.QR_SIZE)
+
+        cameraGUI.camCapture(SET.PREVIEW_FILE,SET.QR_SIZE)
 
         #check for QR code in image
         qrcode=cameraGUI.run_p(SET.READ_QR+SET.PREVIEW_FILE)
 
         if len(qrcode)>0:
             # delete this line after removing the line that adds the string "QR-Code"
-            qrcode=qrcode.strip("QR-Code:").strip('\n')
+            qrcode=qrcode
 
-            self.resultQR.set(qrcode)
-
+            self.resultQR = qrcode
+            self.resultQR = self.resultQR.split(":")
+            self.resultQR = self.resultQR[1]
+            
             self.scan=False
 
             found=True
             
         else:
 
-            self.resultQR.set("")
+            self.resultQR = ""
 
-        if found:
-
-            self.qrAction(qrcode)
-
-        self.update()
-
-    def qrAction(self,qrcode):
-
-        if self.qrRead.get() == 1:
-            cameraGUI.run("sudo flite -t '"+qrcode+"'")
-
-        if self.qrStream.get() == 1:
-            cameraGUI.run("omxplayer '"+qrcode+"'")
-
-        if self.qrRead.get() == 0 and self.qrStream.get() == 0:
-            TK.messagebox.showinfo("QR Code",self.resultQR.get())
-
-
-    def msg(self,text):
-        self.filename.set(text)
-        self.update()
 
     def normal(self):
         name=cameraGUI.timestamp()+".jpg"
@@ -570,7 +547,7 @@ class Graph(object):
         go_last = False
         
         # get nodes dictionary and find the current room
-        for node, room in self.nodes.items():
+        for node, room in self.rooms.items():
 
             if first_entry == False:
                 # save the first entry in case we are at the first entry
@@ -595,18 +572,18 @@ class Graph(object):
                             return room[index - 1]
                         
                 # if return isn't used, allow for loop to iterate to next key:value pair
-                prev_entry = Trueprint("prev_entry is true")
+                prev_entry = True
                 
             # if node has not equaled key, save this node
             if prev_entry == False:
                 prev_node = node
             # otherwise, node has equaled key, so return the last value of the previous key
-            elif prev_entry == True and self.nodes[prev_node][len(self.nodes[prev_node])-1]:
+            elif prev_entry == True and self.rooms[prev_node][len(self.rooms[prev_node])-1]:
                 # return the last entry in the previous list at the key prev_node
-                return self.nodes[prev_node][len(self.nodes[prev_node])-1]
+                return self.rooms[prev_node][len(self.rooms[prev_node])-1]
 
         # outside while loop, if nothing else returned, pass last value of last node
-        return self.nodes[prev_node][len(self.nodes[prev_node])-1]        
+        return self.rooms[prev_node][len(self.rooms[prev_node])-1]        
 
 def SNIPE(graph, initial):
     visited = {initial: 0}
@@ -686,16 +663,16 @@ class Feedback():
         self.turn_around = "turn around"
         self.arrived = "arrived"
         self.choose_dest = "choose destination"
-        self.room = "room"
+        self.room = 0
         self.forward = "forward"
         self.turn = ""
-        arrived = "flite -t 'You have arrived at room " + str(room) + ".'"
+        arrived = "flite -t 'You have arrived at room " + str(self.room) + ".'"
         self.first_call = False
         self.room = 0     # used for giving the name of the room number (may not be required)
         self.turn_left_tts = 'flite -t "Turn left." '
         self.turn_right_tts = 'flite -t "Turn right." '
         self.turn_around_tts = 'flite -t "Please turn around." '
-        self.slect_room_tts = 'flite -t "Select your destination." '
+        self.select_room_tts = 'flite -t "Select your destination." '
         self.arrived_tts = "flite -t 'You have arrived at room " + str(self.room) + ".'"
         self.current_dest_tts = "flite -t 'Your current destination is room " + str(self.room) + ".'"
         self.get_confirm_dest_tts = "flite -t 'The selected destination is " + str(self.room) + ". Please confirm.'"
@@ -708,6 +685,16 @@ class Feedback():
         self.change_dest_detect_tts = 'flite -t "Button push detected. Would you like to change your destination?" '
         self.confrim_change_dest_tts = 'flite -t "Button push detected." '
 
+
+    def update_room(self, room):
+        self.arrived_tts = "flite -t 'You have arrived at room " + str(self.room) + ".'"
+        self.current_dest_tts = "flite -t 'Your current destination is room " + str(self.room) + ".'"
+        self.get_confirm_dest_tts = "flite -t 'The selected destination is " + str(self.room) + ". Please confirm.'"
+        self.confirm_dest_tts = "flite -t 'You have selected room " + str(self.room) + ". Scanning for current position.'"
+        self.start_node = "flite -t 'You are currently standing by room " + str(self.room) + ". Plotting course.'"
+        self.room_change_tts = "flite -t 'Room " + str(self.room) + ".'"
+    
+        
     # direct(self)
     # compares two lists
     # returns direction in for of string
@@ -1885,12 +1872,12 @@ while True:
     camera = cameraGUI()
     graph = Graph()
     imu = MPU9250()
-    haptic = hapticDriver()
+    haptic = Adafruit_DRV2605()
     feedback = Feedback()
     
     ## 'Global' variables
     ## check if these are used
-    dist_rem = distance         #
+ 
     turn_left = False          # Used for feedack from either/ both grid results and current
     turn_right = False         #
     turn_around = False        #
@@ -1899,6 +1886,7 @@ while True:
     
     ## These variables are used
     distance = 0.0              # used to return distance value from calls to shortest path
+    dist_rem = distance         #
     path = {}                   # default dictionary
     qr_code = ""                # rerived QR code from pi cam scan
     end_node = ""               # end of path
@@ -1908,7 +1896,7 @@ while True:
     state = 0                   # Keeps track of the current state the program exists in 
     destination = 0             # a room number
     counter = 0               # generic counter used in all states for feedback after specific iterations through a loop
-    max_count = 150              # maximum count @Param:counter reaches
+    max_counter = 1000000              # maximum count @Param:counter reaches
     
     ## Magnetometer Variables
     getMag = True
@@ -2001,7 +1989,8 @@ while True:
 
     
     # start at an arbitrary room in the nodes dictionary stored in graph
-    destination = 340;
+    destination = 340
+    feedback.update_room(destination)
 
     state = 1
 
@@ -2015,10 +2004,11 @@ while True:
 
         # Note that graph has end_node saved as the local variable end
         end_node = graph.get_dest(destination)
+        feedback.update_room(destination)
         
         # notify the user with tts instructions
         os.system(feedback.select_room_tts)
-        os.system(current_dest_tts)
+        os.system(feedback.current_dest_tts)
         
         ## READ FOR DESTINATION SELECTION
         while select_dest == False:
@@ -2032,8 +2022,10 @@ while True:
             if GPIO.input(select_next):
                 if input.debounce(select_next) == True:
                     destination = graph.next_room(end_node, destination)
+                    feedback.update_room(destination)
                     os.system(feedback.room_change_tts)
                     end_node = graph.get_dest(destination)
+                    feedback.room = destination
                     counter = 0
                     
             #   call text to talk function, passing the value of current node
@@ -2041,15 +2033,16 @@ while True:
                 # debounce
                 if input.debounce(select_prev) == True:
                     destination = graph.prev_room(end_node, destination)
-                    feedback.room = destination
+                    feedback.update_room(destination)
                     os.system(feedback.room_change_tts)
-                    end_node = graph.get_dest(destination)  
+                    end_node = graph.get_dest(feedback.room)
+                    feedback.room = destination
                     counter = 0
                     
             #   call text to talk, passing current_node 
             if GPIO.input(select_current):   
                 # confirm button hit, debouce
-                if input.debounce(select_next) == True:
+                if input.debounce(select_current) == True:
                     # Get confirmation
                     os.system(feedback.get_confirm_dest_tts)
                     confirm = True
@@ -2064,7 +2057,7 @@ while True:
                         # selection confirmed, now debounce
                         if GPIO.input(select_current):   
                             # confirm button hit, debouce
-                            if input.debounce(select_next) == True:    
+                            if input.debounce(select_current) == True:    
                                 # notify user of selection    
                                 ## ToDo: change this so that when users re-enter state == 1 
                                 ## (i.e. current_node is not ""), that the current position is 
@@ -2074,8 +2067,10 @@ while True:
                                 # Save the last node for comparing scanned qr_codes
                                 # Note that graph has end_node saved as the local variable end
                                 end_node = graph.get_dest(destination)
+                                feedback.update_room(destination)
                                 
                                 # exit while loop
+                                confirm = False
                                 select_dest = True
                                 #reset counter
                                 counter = 0
@@ -2088,7 +2083,8 @@ while True:
                             # debounce
                             if input.debounce(select_next) == True:
                                 # notify user of new activity                                   
-                                os.system(feedback.select_dest_tts)
+                                os.system(feedback.select_room_tts)
+                                confirm = False
                                 counter = 0
                                 
                         # User wants to change selection
@@ -2096,7 +2092,8 @@ while True:
                             # debounce
                             if input.debounce(select_prev) == True:
                                 # notify user of new activity
-                                os.system(feedback.select_dest_tts)
+                                os.system(feedback.select_room_tts)
+                                confirm = False
                                 counter = 0
                                 
                         # no selection has been made, so increase timer
@@ -2113,13 +2110,13 @@ while True:
     # proceed to state == 3 if:
     #   qr_code is in graph.node and not destination
     while state == 2:
-
+        print("in state == 2")
         # scan for a QR code
-        qr_code = camera.qrGet()                  # camera.qrGet() returns a string
-
+        camera.qrGet()                  # camera.qrGet() returns a string
+        print(qr_code)
         # if this qr_code has a value, a qr_code was scanned
         # also check if the qr_code belongs to a value on the grid
-        if (qr_code is not "") and (qr_code in graph.node.keys()):
+        if (camera.resultQR is not "") and (camera.resultQR in graph.rooms.keys()):
             
             # expected values
             if qr_code is not end_node:
@@ -2155,7 +2152,7 @@ while True:
                 state = 3
                 
             # next check if qr_code is the destination
-            elif qr_code is end_node:
+            elif camera.resultQR is end_node:
                 
                 # make call to ask for user-input destination, as scanned module is already the current module
                 # ToDo: make call to text to talk (user has arrived at destination)
@@ -2194,11 +2191,11 @@ while True:
     # once destination == current_node (oringin), got ot state 33
     while state == 3:
         # scan for a QR code
-        qr_code = camera.qrGet()                  # camera.qrGet() returns a string
+        camera.qrGet()                  # camera.qrGet() returns a string
 
         # if this qr_code has a value, a qr_code was scanned
         # also check if the qr_code belongs to a value on the grid
-        if (qr_code is not "") and (qr_code in graph.node.keys()):
+        if (camera.resultQR is not "") and (camera.resultQR in graph.node.keys()):
             
             # create a new path using the scanned QR-code
             destination, feedback.new_path = shortest_path(graph, qr_code, destination)
@@ -2226,7 +2223,7 @@ while True:
 
         # user somehow scanned a junk QR code.
         else:
-            qr_code = ""
+            camera.resultQR = ""
             
         # check if user manually interrupts to change destination
         if GPIO.input(select_next) or GPIO.input(select_prev) or GPIO.input(select_current):
