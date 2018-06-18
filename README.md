@@ -1,2 +1,2 @@
 # Navi
-Navigational Assistance to the Blind
+Navigational Assistance to the Visually Impaired
