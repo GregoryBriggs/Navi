@@ -412,37 +412,329 @@ class cameraGUI():
             self.qrScanner()
 
     def qrScanner(self):
+<<<<<<< NAVI_v_1-2.py
+<<<<<<< NAVI_v_1-2.py
+<<<<<<< NAVI_v_1.9
+<<<<<<< NAVI_v_1.9
+<<<<<<< NAVI_v_1.9
+        # ensures the result is found by setting found to false
+||||||| NAVI_1-1
+        # ensures the result is found by setting found to false
+        found=False
+||||||| NAVI_1-1
+        # ensures the result is found by setting found to false
+        found=False
+=======
+>>>>>>> NAVI_v_1.7
+||||||| NAVI_1-1
+        # ensures the result is found by setting found to false
+        found=False
+=======
+>>>>>>> NAVI_v_1.7
+||||||| NAVI.py
+        # ensures the result is found by setting found to false
+        found=False
+=======
+>>>>>>> NAVI_v_1-1.py
 
+<<<<<<< NAVI_v_1-2.py
+<<<<<<< NAVI_v_1.9
+<<<<<<< NAVI_v_1.9
+        while self.scan == True:
+=======
+||||||| NAVI_1-1
+        while self.scan == True:
+=======
+>>>>>>> NAVI_v_1.7
+||||||| NAVI.py
+        # ensures the result is found by setting found to false
+        found=False
+=======
+>>>>>>> NAVI_v_1-1.py
 
+<<<<<<< NAVI_v_1-2.py
+<<<<<<< NAVI_v_1.9
+>>>>>>> NAVI_v_1.7
+||||||| NAVI_1-1
+        while self.scan == True:
+=======
+>>>>>>> NAVI_v_1.7
+||||||| NAVI.py
+        while self.scan == True:
+=======
+>>>>>>> NAVI_v_1-1.py
+
+<<<<<<< NAVI_v_1-2.py
+<<<<<<< NAVI_v_1.9
+<<<<<<< NAVI_v_1.9
+        cameraGUI.camCapture(SET.PREVIEW_FILE,SET.QR_SIZE)
+||||||| NAVI_1-1
+            cameraGUI.camCapture(SET.PREVIEW_FILE,SET.QR_SIZE)
+=======
+||||||| NAVI.py
+        while self.scan == True:
+=======
+>>>>>>> NAVI_v_1-1.py
+
+<<<<<<< NAVI_v_1-2.py
+        cameraGUI.camCapture(SET.PREVIEW_FILE,SET.QR_SIZE)
+>>>>>>> NAVI_v_1.7
+||||||| NAVI_1-1
+            cameraGUI.camCapture(SET.PREVIEW_FILE,SET.QR_SIZE)
+=======
 
         cameraGUI.camCapture(SET.PREVIEW_FILE,SET.QR_SIZE)
+>>>>>>> NAVI_v_1.7
+||||||| NAVI_1-1
+            cameraGUI.camCapture(SET.PREVIEW_FILE,SET.QR_SIZE)
+=======
+
+        cameraGUI.camCapture(SET.PREVIEW_FILE,SET.QR_SIZE)
+>>>>>>> NAVI_v_1.7
+||||||| NAVI.py
+            cameraGUI.camCapture(SET.PREVIEW_FILE,SET.QR_SIZE)
+=======
+
+        cameraGUI.camCapture(SET.PREVIEW_FILE,SET.QR_SIZE)
+>>>>>>> NAVI_v_1-1.py
+||||||| NAVI.py
+            cameraGUI.camCapture(SET.PREVIEW_FILE,SET.QR_SIZE)
+=======
+
+        cameraGUI.camCapture(SET.PREVIEW_FILE,SET.QR_SIZE)
+>>>>>>> NAVI_v_1-1.py
 
         #check for QR code in image
         qrcode=cameraGUI.run_p(SET.READ_QR+SET.PREVIEW_FILE)
 
         if len(qrcode)>0:
+<<<<<<< NAVI_v_1.9
+||||||| NAVI_1-1
             # delete this line after removing the line that adds the string "QR-Code"
-            qrcode=qrcode
+<<<<<<< NAVI_v_1-2.py
+<<<<<<< NAVI_v_1.9
+            qrcode=qrcode.strip("QR-Code:").strip('\n')
 
+            self.resultQR.set(qrcode)
+=======
+            # delete this line after removing the line that adds the string "QR-Code"
+<<<<<<< NAVI_v_1-2.py
+<<<<<<< NAVI_v_1.9
+            qrcode=qrcode
+>>>>>>> NAVI_v_1.7
+
+<<<<<<< NAVI_v_1.9
+            self.resultQR = qrcode
+            self.resultQR = self.resultQR.split(":")
+            print(self.resultQR)
+            self.resultQR = self.resultQR[1]
+            
+||||||| NAVI_1-1
+=======
             self.resultQR = qrcode
             self.resultQR = self.resultQR.split(":")
             self.resultQR = self.resultQR[1]
             
+>>>>>>> NAVI_v_1.7
+||||||| NAVI_1-1
+            qrcode=qrcode.strip("QR-Code:").strip('\n')
+
+            self.resultQR.set(qrcode)
+||||||| NAVI_1-1
+            qrcode=qrcode.strip("QR-Code:").strip('\n')
+||||||| NAVI.py
+            qrcode=qrcode.strip("QR-Code:").strip('\n')
+
+            self.resultQR.set(qrcode)
+=======
+            qrcode=qrcode
+>>>>>>> NAVI_v_1-1.py
+
+<<<<<<< NAVI_v_1-2.py
+            self.resultQR.set(qrcode)
+=======
+            qrcode=qrcode
+>>>>>>> NAVI_v_1.7
+
+<<<<<<< NAVI_v_1.9
+=======
+            qrcode=qrcode
+||||||| NAVI.py
+            qrcode=qrcode.strip("QR-Code:").strip('\n')
+
+            self.resultQR.set(qrcode)
+=======
+            qrcode=qrcode
+>>>>>>> NAVI_v_1-1.py
+
+<<<<<<< NAVI_v_1-2.py
+            self.resultQR = qrcode
+            self.resultQR = self.resultQR.split(":")
+            self.resultQR = self.resultQR[1]
+            
+>>>>>>> NAVI_v_1.7
+||||||| NAVI_1-1
+=======
+            self.resultQR = qrcode
+            self.resultQR = self.resultQR.split(":")
+            self.resultQR = self.resultQR[1]
+            
+>>>>>>> NAVI_v_1.7
+||||||| NAVI.py
+=======
+            self.resultQR = qrcode
+            self.resultQR = self.resultQR.split(":")
+            self.resultQR = self.resultQR[1]
+            
+>>>>>>> NAVI_v_1-1.py
+||||||| NAVI.py
+=======
+            self.resultQR = qrcode
+            self.resultQR = self.resultQR.split(":")
+            self.resultQR = self.resultQR[1]
+            
+>>>>>>> NAVI_v_1-1.py
             self.scan=False
 
             found=True
             
         else:
 
+<<<<<<< NAVI_v_1-2.py
+<<<<<<< NAVI_v_1-2.py
+<<<<<<< NAVI_v_1.9
             self.resultQR = ""
 
+<<<<<<< NAVI_v_1.9
+<<<<<<< NAVI_v_1.9
+        return self.resultQR
+||||||| NAVI_1-1
+        if self.qrRead.get() == 1:
+            cameraGUI.run("sudo flite -t '"+qrcode+"'")
+
+        if self.qrStream.get() == 1:
+            cameraGUI.run("omxplayer '"+qrcode+"'")
+
+        if self.qrRead.get() == 0 and self.qrStream.get() == 0:
+            TK.messagebox.showinfo("QR Code",self.resultQR.get())
+
+||||||| NAVI_1-1
+            self.resultQR.set("")
+
+        if found:
+
+            self.qrAction(qrcode)
+
+        self.update()
+
+    def qrAction(self,qrcode):
+=======
+            self.resultQR = ""
+>>>>>>> NAVI_v_1.7
+||||||| NAVI.py
+            self.resultQR.set("")
+
+        if found:
+||||||| NAVI.py
+            self.resultQR.set("")
+
+        if found:
+
+            self.qrAction(qrcode)
+
+        self.update()
+
+    def qrAction(self,qrcode):
+=======
+            self.resultQR = ""
+>>>>>>> NAVI_v_1-1.py
+
+<<<<<<< NAVI_v_1-2.py
+            self.qrAction(qrcode)
+
+        self.update()
+
+    def qrAction(self,qrcode):
+=======
+            self.resultQR = ""
+>>>>>>> NAVI_v_1-1.py
+
+<<<<<<< NAVI_v_1-2.py
+<<<<<<< NAVI_v_1.9
+    def msg(self,text):
+        self.filename.set(text)
+        self.update()
+=======
+>>>>>>> NAVI_v_1.7
+||||||| NAVI_1-1
+        if self.qrRead.get() == 1:
+            cameraGUI.run("sudo flite -t '"+qrcode+"'")
+
+        if self.qrStream.get() == 1:
+            cameraGUI.run("omxplayer '"+qrcode+"'")
+
+        if self.qrRead.get() == 0 and self.qrStream.get() == 0:
+            TK.messagebox.showinfo("QR Code",self.resultQR.get())
+
+
+    def msg(self,text):
+        self.filename.set(text)
+        self.update()
+=======
+>>>>>>> NAVI_v_1.7
+||||||| NAVI_1-1
+        if self.qrRead.get() == 1:
+            cameraGUI.run("sudo flite -t '"+qrcode+"'")
+
+        if self.qrStream.get() == 1:
+            cameraGUI.run("omxplayer '"+qrcode+"'")
+
+        if self.qrRead.get() == 0 and self.qrStream.get() == 0:
+            TK.messagebox.showinfo("QR Code",self.resultQR.get())
+
+
+    def msg(self,text):
+        self.filename.set(text)
+        self.update()
+=======
+>>>>>>> NAVI_v_1.7
+||||||| NAVI.py
+        if self.qrRead.get() == 1:
+            cameraGUI.run("sudo flite -t '"+qrcode+"'")
+
+        if self.qrStream.get() == 1:
+            cameraGUI.run("omxplayer '"+qrcode+"'")
+
+        if self.qrRead.get() == 0 and self.qrStream.get() == 0:
+            TK.messagebox.showinfo("QR Code",self.resultQR.get())
+
+
+    def msg(self,text):
+        self.filename.set(text)
+        self.update()
+=======
+>>>>>>> NAVI_v_1-1.py
+||||||| NAVI.py
+        if self.qrRead.get() == 1:
+            cameraGUI.run("sudo flite -t '"+qrcode+"'")
+
+        if self.qrStream.get() == 1:
+            cameraGUI.run("omxplayer '"+qrcode+"'")
+
+        if self.qrRead.get() == 0 and self.qrStream.get() == 0:
+            TK.messagebox.showinfo("QR Code",self.resultQR.get())
+
+
+    def msg(self,text):
+        self.filename.set(text)
+        self.update()
+=======
+>>>>>>> NAVI_v_1-1.py
 
     def normal(self):
         name=cameraGUI.timestamp()+".jpg"
         cameraGUI.camCapture(name,SET.NORM_SIZE)
-        
-    def exit(self):
-        exit()
+
 
 #End
 
@@ -2112,8 +2404,47 @@ while True:
     while state == 2:
         print("in state == 2")
         # scan for a QR code
+<<<<<<< NAVI_v_1-2.py
+<<<<<<< NAVI_v_1-2.py
+<<<<<<< NAVI_v_1.9
+<<<<<<< NAVI_v_1.9
+<<<<<<< NAVI_v_1.9
+        camera.qrGet()                  # camera.qrGet() returns a string
+||||||| NAVI_1-1
+        qr_code = camera.qrGet()                  # camera.qrGet() returns a string
+
+=======
         camera.qrGet()                  # camera.qrGet() returns a string
         print(qr_code)
+>>>>>>> NAVI_v_1.7
+||||||| NAVI_1-1
+        qr_code = camera.qrGet()                  # camera.qrGet() returns a string
+
+=======
+        camera.qrGet()                  # camera.qrGet() returns a string
+        print(qr_code)
+>>>>>>> NAVI_v_1.7
+||||||| NAVI_1-1
+        qr_code = camera.qrGet()                  # camera.qrGet() returns a string
+
+=======
+        camera.qrGet()                  # camera.qrGet() returns a string
+        print(qr_code)
+>>>>>>> NAVI_v_1.7
+||||||| NAVI.py
+        qr_code = camera.qrGet()                  # camera.qrGet() returns a string
+
+=======
+        camera.qrGet()                  # camera.qrGet() returns a string
+        print(qr_code)
+>>>>>>> NAVI_v_1-1.py
+||||||| NAVI.py
+        qr_code = camera.qrGet()                  # camera.qrGet() returns a string
+
+=======
+        camera.qrGet()                  # camera.qrGet() returns a string
+        print(qr_code)
+>>>>>>> NAVI_v_1-1.py
         # if this qr_code has a value, a qr_code was scanned
         # also check if the qr_code belongs to a value on the grid
         if (camera.resultQR is not "") and (camera.resultQR in graph.rooms.keys()):
@@ -2188,7 +2519,7 @@ while True:
     # this state is actively providing feedback while scanning for new input
     #  feedbaack consists of reading IMU
     # providing haptic feedback
-    # once destination == current_node (oringin), got ot state 33
+    # once destination == current_node (origin), got to state 3
     while state == 3:
         # scan for a QR code
         camera.qrGet()                  # camera.qrGet() returns a string
