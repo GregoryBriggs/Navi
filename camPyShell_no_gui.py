@@ -65,8 +65,6 @@ class cameraGUI():
         qrcode=cameraGUI.run_p(SET.READ_QR+SET.PREVIEW_FILE)
 
         if len(qrcode)>0:
-            # delete this line after removing the line that adds the string "QR-Code"
-            qrcode=qrcode
 
             self.resultQR = qrcode
             self.resultQR = self.resultQR.split(":")
@@ -87,14 +85,11 @@ class cameraGUI():
         name=cameraGUI.timestamp()+".jpg"
         cameraGUI.camCapture(name,SET.NORM_SIZE)
         
-    def exit(self):
-        exit()
 
 
 
 while True:
     qr_cam = cameraGUI()
     qr_code = qr_cam.qrGet()
-    print("QR-Code: ", qr_code)
-    print("QR-Code: ", qr_cam.resultQR)
+    print("QR-Code (resultQR): ", qr_cam.resultQR)
 #End
