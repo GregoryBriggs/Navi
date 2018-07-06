@@ -2037,8 +2037,8 @@ noSpeed = False
 
 ave_sample_time = 0.0                                        # sample time of the last reading from the IMU
 ave_readings = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]    # stores last readings of IMU
-A_x = [-3.5191, 32.6908, 55.998]                    # grid's mag reading in the +x-direction
-A_y = [-5.1537, 8.24405, 55.108]                    # grid's mag reading in the +y-direction
+A_x = [25.724, 27.51, 44.232]                    # grid's mag reading in the +x-direction
+A_y = [26.974, 11.254, 54.426]                    # grid's mag reading in the +y-direction
 ax_under_b = 0.0
 ay_under_b = 0.0
 
