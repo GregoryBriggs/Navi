@@ -458,6 +458,7 @@ class Graph(object):
         self.Xdistances = {}    # fast initialization of an empty dict
         self.Ydistances = {}    # fast initialization of an empty dict
         self.vertices_2D = {}   # empty tuple
+        self.node_cart_coord = {} # fast initialization of an empty dict
 
     # must either be an in or a string, a unique identifier for a node that is iterable in a for loop
     def add_node(self, value):
@@ -697,6 +698,7 @@ class Feedback():
         self.at_destination_tts = 'flite -t "You are standing by your desired destination." '
         self.forward_tts = 'flite -t "You are heading in the correct direction." '
         self.change_dest_detect_tts = 'flite -t "Button push detected. Would you like to change your destination?" '
+        self.update_current_loc_tts = "flite -t 'You are near room " + str(self.room) + ".'"
         self.confrim_change_dest_tts = 'flite -t "Button push detected." '
 
 
@@ -707,6 +709,7 @@ class Feedback():
         self.confirm_dest_tts = "flite -t 'You have selected room " + str(room) + ". Scanning for current position.'"
         self.start_node = "flite -t 'You are currently standing by room " + str(room) + ". Plotting course.'"
         self.room_change_tts = "flite -t 'Room " + str(room) + ".'"
+        self.update_current_loc_tts = "flite -t 'You are near room " + str(room) + ".'"
     
         
     # direct(self)
@@ -716,64 +719,156 @@ class Feedback():
         # initialize variables each time.
         # if they were overwritten outside the function call to turn, it will not alter the behavior
         self.displacement = [0,0]
+        self.ThreeTwoDisp = [0,0]
+        self.TwoOneDisp = [0,0]
+        self.path_index = 0
         self.poi_start = self.new_path[0]
+        self.wrong_way = False
         dispx = 0
         dispy = 0
-        path_length = len(self.new_path)
+        path_length = len(self.prev_path)
+        
+        print("inside direct")
+        print("path_length: ", path_length)
+        
+        # Check if destination has been reached
+        if self.poi_start is self.new_path[len(self.new_path)-1]:
+
+            # User has reached their destination
+            self.turn = self.destination
+            return
+
+
+        #   Expecting:
+        #       poi_start to be a node
+        #       prev_path to be a vector of nodes
+        elif self.poi_start not in self.prev_path:
+            print("inside direct: poi_start and prev_path comparison")    
+            # you have gone the wrong way
+            self.turn = self.turn_around
+
+            # MAY NOT BE REQUIRED
+            self.wrong_way = True
+
+        # If new_path only has one element, user has reached the destination
+        elif len(self.new_path) is 1:
+                
+            print("inside direct: check length of new_path is 1")
+              
+            # CHECK IF THIS IS THE CASE
+            self.turn = self.destination
             
-        if path_length > 2:
-            self.poi_next = self.new_path[1]
-            if path_length > 2:
-                self.poi_last = self.new_path[2]
-
-                # check direction
-                if (self.prev_path[1] is not self.poi_start[0]):
-                    if (self.prev_path[0] is not self.poi_start[0]):
-                        # you have gone the wrong way
-                        self.turn = self.turn_around
                         
-        
-                self.prev_path = self.new_path
-                # from 0 to 1 indluded
-                for index in range(2):
-                    self.displacement[index] = math.sqrt(self.graph[(self.poi_next, self.poi_last)][index]**2) - math.sqrt(self.graph[(self.poi_start, self.poi_next)][index]**2)
-                    if index == 1:
-                        dispx = self.displacement[index-1]
-                        dispy = self.displacement[index]
-                        print(dispx, dispy)
-                        if dispx == 0 and dispy == 0:
+        # Otherwise, if the start point exists in the previous path, run some checks
+        elif self.poi_start in self.prev_path:
+
+            print("inside direct: poi_start in prev_path comparison")
+            # Checks:
+            #       length of previous path,
+            #       compares length of prev_path and new_path
+            if path_length >= 2:
+
+                if self.start_node is not self.prev_path[0]:
+                    # Expecting a node, specifically the next node in the path after poi_start node
+                    self.poi_prev = self.prev_path[self.prev_path.index(self.poi_start)-1]
+
+                    # case where the node exists on the previous path, and the previoius path has at least 3 nodes
+                    if path_length > 2:
+                        
+                        # Expecting a node, specifically the next node in the path after poi_next node
+                        self.poi_last = self.prev_path[self.prev_path.index(self.poi_start)+1]
+
+                        # This if else block check all left/right combo options
+                        # Note: first four checks are for clockwise rotation,
+                        #       next four checks are for counter-clockwise rotations.
+
+                        # start is above prev and last is right of start
+                        if self.graph[self.poi_prev][1] < self.graph[self.poi_start][1] and self.graph[self.poi_last][0] > self.graph[self.poi_start][0]:
+                            self.turn = self.right
+                            
+                        # start is right of prev and last is below start
+                        elif self.graph[self.poi_prev][0] < self.graph[self.poi_start][0] and self.graph[self.poi_last][1] < self.graph[self.poi_start][1]:
+                            self.turn = self.right
+
+                        # start is below prev and last is left of start
+                        elif self.graph[self.poi_prev][1] > self.graph[self.poi_start][1] and self.graph[self.poi_last][0] < self.graph[self.poi_start][0]:
+                            self.turn = self.right
+                            
+                        # start is left of prev and last is above start
+                        elif self.graph[self.poi_prev][0] > self.graph[self.poi_start][0] and self.graph[self.poi_last][0] < self.graph[self.poi_start][0]:
+                            self.turn = self.right
+
+                        # start is right of prev and last is above start
+                        elif self.graph[self.poi_prev][0] < self.graph[self.poi_start][0] and self.graph[self.poi_last][1] > self.graph[self.poi_start][1]:
+                            self.turn = self.left
+
+                        # start is above prev and last is left of start
+                        elif self.graph[self.poi_prev][1] < self.graph[self.poi_start][1] and self.graph[self.poi_last][0] < self.graph[self.poi_start][0]:
+                            self.turn = self.left
+
+                        # start is left of prev and last is below start
+                        elif self.graph[self.poi_prev][0] > self.graph[self.poi_start][0] and self.graph[self.poi_last][1] < self.graph[self.poi_start][1]:
+                            self.turn = self.left
+
+                        # start is below prev and last is right of start
+                        elif self.graph[self.poi_prev][1] > self.graph[self.poi_start][1] and self.graph[self.poi_last][0] > self.graph[self.poi_start][0]:
+                            self.turn = self.left
+
+                        # default turn instruction
+                        else:
                             self.turn = self.forward
-                        elif dispx >= 0 and dispy >= 0:
-                            self.turn = self.left
-                        elif dispx >= 0 and dispy <= 0:
-                            self.turn = self.right
-                        elif dispx <= 0 and dispy >= 0:
-                            self.turn = self.right
-                        elif dispx <= 0 and dispy <= 0:
-                            self.turn = self.left
+
+                        print("Self.Turn: ", self.turn)
+                        print("poi_prev", self.poi_prev)
+                        print("poi_prev", self.poi_start)
+                        print("poi_prev", self.poi_last)
+                        
+##                        print("graph prev X: ", self.graph[self.poi_prev][0])
+##                        print("graph prev y: ", self.graph[self.poi_prev][1])
+##                        print("graph start X: ", self.graph[self.poi_prev][0])
+##                        print("graph start y: ", self.graph[self.poi_prev][1])
+##                        print("graph last X: ", self.graph[self.poi_prev][0])
+##                        print("graph last y: ", self.graph[self.poi_prev][1])
 
 
-        # Path has two points: if they are the same, destination has been reached
-        elif path_length == 2:
-            self.poi_next = self.new_path[1]
-            # one case is that you have arrived
-            if self.poi_next == self.poi_start:
-                self.turn = self.arrived
-            # the other case worth noting is when the second value (i.e.destination)
-            # from the old path is not the same as the destination in the new path
-            elif self.poi_next is not self.prev_path[1]:
-                self.turn = self.turn_around
-            # the third circumstance is when the user hadn't moved and re-scanned the node
-            else:
-                self.turn = self.forward
-        
-        # there is only one or no values, which should not happen
-        else:
-            if path_length == 1 and self.poi_start == self.new_path[0]:
-                self.turn = self.arrived
 
-            else:
-                self.turn = self.choose_dest
+                        
+                        # make sure to preserve the prev_path if the new_path is length 2
+                        if len(self.new_path) > 2:
+
+                            print("inside direct: Inside new_path>2 comparison")
+                            print(self.poi_start)
+                            # updates path
+                            self.prev_path = self.new_path
+
+
+##                # length of prev_path is two. This should never arise as a case unless the user scans
+##                # the same node twice
+##                elif path_length == 2:
+##                    
+##                    # one case is that you have arrived
+##                    if self.poi_next == self.poi_start:
+##                        
+##                        self.turn = self.arrived
+##                        
+##                    # the other case worth noting is when the second value (i.e.destination)
+##                    # from the old path is not the same as the destination in the new path
+##                    elif self.poi_next is not self.prev_path[1]:
+##                        self.turn = self.turn_around
+##                        
+##                    # the third circumstance is when the user hadn't moved and re-scanned the node
+##                    else:
+##                        self.turn = self.forward
+##
+##        
+##        # there is only one or no values, which should not happen
+##        else:
+##            if path_length == 1 and self.poi_start == self.new_path[0]:
+##                self.turn = self.arrived
+##
+##            else:
+##                self.turn = self.choose_dest
+        return
 
 
     ## Process Orientation
@@ -1945,7 +2040,12 @@ while True:
     # used for selecting destination
     graph.rooms = OrderedDict(sorted({'A':[340, 341, 342, 343], 'B':[344,345,346,347], 'C':[348,349,350,351], 
                 'D':[353], 'E':[355], 'F':[357], 'G':[359],'H':[361], 'I':[363], 'J':[365], 'K':[367],
-                'L':[369], 'M':[371],'N':[373], 'O':[375], 'P':[377], 'Q':[379], 'R':[381], 'S':[383], 'T':[385], 'U':[387], 'V':[389]}.items()))
+                'L':[369], 'M':[371],'N':[373], 'O':[375], 'P':[377], 'Q':[379], 'R':[381], 'S':[383], 'T':[385]}.items()))
+
+    graph.node_cart_coord = OrderedDict(sorted({'A':[0,0], 'B':[0,21], 'C':[0,49], 'D':[0,161], 'E':[0,201], 
+                'F':[39,201], 'G':[73,201],'H':[100,201], 'I':[145,201], 'J':[183,201],
+                'K':[183,161], 'L':[183,100], 'M':[183,49],'N':[183,21], 'O':[183,0],
+                'P':[163,0], 'Q':[133,0], 'R':[100,0], 'S':[80,0], 'T':[65,0]}.items()))
 
 
 
@@ -1976,41 +2076,40 @@ while True:
 
     # rooms J to P
 
-    graph.add_edge('J', 'K', 12, 0)
-    graph.add_edge('K', 'L', 5, 0)
-    graph.add_edge('L', 'M', 5, 0)
-    graph.add_edge('M', 'N', 4, 0)  #30 across, direction going down
-    graph.add_edge('N', 'O', 4, 0)
+    graph.add_edge('J', 'K', 0, -40)
+    graph.add_edge('K', 'L', 0, -61)
+    graph.add_edge('L', 'M', 0, -51)
+    graph.add_edge('M', 'N', 0, -28)  #30 across, direction going down
+    graph.add_edge('N', 'O', 0, -21)
 
-    graph.add_edge('K', 'J', -12, 0)
-    graph.add_edge('L', 'K', -5, 0)
-    graph.add_edge('M', 'L', -5, 0)
-    graph.add_edge('N', 'M', -4, 0)  #30 across, direction going UP
-    graph.add_edge('O', 'N', -4, 0)
+    graph.add_edge('K', 'J', 0, 40)
+    graph.add_edge('L', 'K', 0, 61)
+    graph.add_edge('M', 'L', 0, 51)
+    graph.add_edge('N', 'M', 0, 28)  #30 across, direction going UP
+    graph.add_edge('O', 'N', 0, 21)
 
-    #rooms O to V
+    #rooms O to t
 
-    graph.add_edge('O', 'P', 8, 0)
-    graph.add_edge('P', 'Q', 7, 0)
-    graph.add_edge('Q', 'R', 5, 0)  #30 ACROSS  <<--
-    graph.add_edge('R', 'S', 4, 0)
-    graph.add_edge('S', 'T', 6, 0)
+    graph.add_edge('O', 'P', -20, 0)
+    graph.add_edge('P', 'Q', -30, 0)
+    graph.add_edge('Q', 'R', -33, 0)  #30 ACROSS  <<--
+    graph.add_edge('R', 'S', -20, 0)
+    graph.add_edge('S', 'T', -15, 0)
 
-    graph.add_edge('P', 'O', -8, 0)
-    graph.add_edge('Q', 'P', -7, 0)
-    graph.add_edge('R', 'Q', -5, 0)  #30 ACROSS  ->>
-    graph.add_edge('S', 'R', -4, 0)
-    graph.add_edge('T', 'S', -6, 0)
+    graph.add_edge('P', 'O', 20, 0)
+    graph.add_edge('Q', 'P', 30, 0)
+    graph.add_edge('R', 'Q', 33, 0)  #30 ACROSS  ->>
+    graph.add_edge('S', 'R', 20, 0)
+    graph.add_edge('T', 'S', 15, 0)
 
     
     # start at an arbitrary room in the nodes dictionary stored in graph
     destination = 340
 
-    #
-    feedback.graph = graph.vertices_2D
-    print(feedback.graph)
+    # used for directional feedback
+    feedback.graph = graph.node_cart_coord
 
-    #
+    # start the state machine
     state = 1
 
     # This state scans for initial input for a reference point on the grid
@@ -2151,7 +2250,7 @@ while True:
                 feedback.prev_path = feedback.new_path  # only do this without processing the new_path first in state 2
 
                 # get the starting node and save it to feedback.room in order to
-                feedback.room = graph.get_room(feedback.new_path[0])
+                feedback.update_room(graph.get_room(feedback.new_path[0]))
                 
                 # tell the user where they are starting
                 os.system(feedback.start_node)
@@ -2219,36 +2318,42 @@ while True:
     # providing haptic feedback
     # once destination == current_node (origin), got to state 3
     while state == 3:
-        print("State = 3!")
+        print("Inside State 3")
         # scan for a QR code
         camera.qrGet()                  # camera.qrGet() returns a string
 
         # if this qr_code has a value, a qr_code was scanned
         # also check if the qr_code belongs to a value on the grid
         if (camera.resultQR is not "") and (camera.resultQR in graph.nodes):
-
+            qr_code = camera.resultQR
             print("Inside State 3 first if statement")
-            
-            # create a new path using the scanned QR-code
-            destination, feedback.new_path = shortest_path(graph, qr_code, end_node)
-            
-            # find the direction to turn or the next command
-            feedback.direct()
-            feedback.process_turn()
-            feedback.direct_tts()
-            feedback.process_turn
-            
-            # if the end has been reached, go back to state == 1
-            if feedback.check_turn is True:
+            print(qr_code)
+            if qr_code == end_node:
 
-                # make call to ask for user-input destination, as scanned module is already the current module
+                feedback.update_room(destination)
+                os.system(feedback.arrived_tts)
+
                 state = 1
                 
-            # otherwise, continue on the path, making sure to reset qr_code
             else:
+                # create a new path using the scanned QR-code
+                distance, feedback.new_path = shortest_path(graph, qr_code, end_node)
+                
+                # find the direction to turn or the next command
+                feedback.direct()
+
+                # update user by nearby room number
+                feedback.update_room(graph.rooms[qr_code][0])
+                os.system(feedback.update_current_loc_tts)
+
+                #
+                feedback.process_turn
+                #
+                feedback.direct_tts
+                
                 
                 # save new_path
-                feedback.prev_path = feedback.new_path
+                #feedback.prev_path = feedback.new_path
                 
                 # keep scanning for QR codes
                 qr_code = ""
