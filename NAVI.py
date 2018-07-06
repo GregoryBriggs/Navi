@@ -1,4 +1,4 @@
-# Imports
+ # Imports
 
 import os
 import subprocess
@@ -25,7 +25,7 @@ select_prev = 16    # GPIO_GEN4, GPIO23, or pin number 16 on the board
 select_current = 18 # GPIO_GEN5, GPIO25, or pin number 18 on the board
 
 # setup GPIO buttons as input
-GPIO.setup(select_next, GPIO.IN)
+GPIO.setup(select_next, GPIO.IN, )
 GPIO.setup(select_prev, GPIO.IN)
 GPIO.setup(select_current, GPIO.IN)
 
@@ -58,16 +58,16 @@ class Input():
         
         for count_on in range(1000):
             if len(pins) > 0:
-                for length in range(len(pins)):
-                    if GPIO.input(pins[length]):
-                        button = pins[length]
+                for pin in range(len(pins)):
+                    if GPIO.input(pins[pin]):
+                        button = pins[pin]
                         counter += 1
           #  else:
                 # oops! what to do?
   
                     
 
-        if counter >= self.max_count and GPIO.input(pins[button]):
+        if counter >= self.max_count and GPIO.input(button):
             button_state = True
 
         return button_state
@@ -452,6 +452,7 @@ class cameraGUI():
 
 class Graph(object):
     def __init__(self):
+        self.prev_node = 0
         self.nodes = set()
         self.rooms = OrderedDict()
         self.edges = defaultdict(list)
@@ -581,14 +582,14 @@ class Graph(object):
                 
             # if node has not equaled key, save this node
             if prev_entry == False:
-                prev_node = node
+                self.prev_node = node
             # otherwise, node has equaled key, so return the last value of the previous key
-            elif prev_entry == True and self.rooms[prev_node][len(self.rooms[prev_node])-1]:
+            elif prev_entry == True and self.rooms[self.prev_node][len(self.rooms[self.prev_node])-1]:
                 # return the last entry in the previous list at the key prev_node
-                return self.rooms[prev_node][len(self.rooms[prev_node])-1]
+                return self.rooms[self.prev_node][len(self.rooms[self.prev_node])-1]
 
         # outside while loop, if nothing else returned, pass last value of last node
-        return self.rooms[prev_node][len(self.rooms[prev_node])-1]        
+        return self.rooms[self.prev_node][len(self.rooms[self.prev_node])-1]        
 
 def SNIPE(graph, initial):
 
@@ -728,8 +729,6 @@ class Feedback():
         dispy = 0
         path_length = len(self.prev_path)
         
-        print("inside direct")
-        print("path_length: ", path_length)
         
         # Check if destination has been reached
         if self.poi_start is self.new_path[len(self.new_path)-1]:
@@ -743,7 +742,7 @@ class Feedback():
         #       poi_start to be a node
         #       prev_path to be a vector of nodes
         elif self.poi_start not in self.prev_path:
-            print("inside direct: poi_start and prev_path comparison")    
+            
             # you have gone the wrong way
             self.turn = self.turn_around
 
@@ -752,8 +751,6 @@ class Feedback():
 
         # If new_path only has one element, user has reached the destination
         elif len(self.new_path) is 1:
-                
-            print("inside direct: check length of new_path is 1")
               
             # CHECK IF THIS IS THE CASE
             self.turn = self.destination
@@ -762,7 +759,6 @@ class Feedback():
         # Otherwise, if the start point exists in the previous path, run some checks
         elif self.poi_start in self.prev_path:
 
-            print("inside direct: poi_start in prev_path comparison")
             # Checks:
             #       length of previous path,
             #       compares length of prev_path and new_path
@@ -784,90 +780,49 @@ class Feedback():
 
                         # start is above prev and last is right of start
                         if self.graph[self.poi_prev][1] < self.graph[self.poi_start][1] and self.graph[self.poi_last][0] > self.graph[self.poi_start][0]:
-                            self.turn = self.right
+                            self.turn = str(self.right).strip("\n")
                             
                         # start is right of prev and last is below start
                         elif self.graph[self.poi_prev][0] < self.graph[self.poi_start][0] and self.graph[self.poi_last][1] < self.graph[self.poi_start][1]:
-                            self.turn = self.right
+                            self.turn = str(self.right).strip("\n")
 
                         # start is below prev and last is left of start
                         elif self.graph[self.poi_prev][1] > self.graph[self.poi_start][1] and self.graph[self.poi_last][0] < self.graph[self.poi_start][0]:
-                            self.turn = self.right
+                            self.turn = str(self.right).strip("\n")
                             
                         # start is left of prev and last is above start
                         elif self.graph[self.poi_prev][0] > self.graph[self.poi_start][0] and self.graph[self.poi_last][0] < self.graph[self.poi_start][0]:
-                            self.turn = self.right
+                            self.turn = str(self.right).strip("\n")
 
                         # start is right of prev and last is above start
                         elif self.graph[self.poi_prev][0] < self.graph[self.poi_start][0] and self.graph[self.poi_last][1] > self.graph[self.poi_start][1]:
-                            self.turn = self.left
+                            self.turn = str(self.left).strip("\n")
 
                         # start is above prev and last is left of start
                         elif self.graph[self.poi_prev][1] < self.graph[self.poi_start][1] and self.graph[self.poi_last][0] < self.graph[self.poi_start][0]:
-                            self.turn = self.left
+                            self.turn = str(self.left).strip("\n")
 
                         # start is left of prev and last is below start
                         elif self.graph[self.poi_prev][0] > self.graph[self.poi_start][0] and self.graph[self.poi_last][1] < self.graph[self.poi_start][1]:
-                            self.turn = self.left
+                            self.turn = str(self.left).strip("\n")
 
                         # start is below prev and last is right of start
                         elif self.graph[self.poi_prev][1] > self.graph[self.poi_start][1] and self.graph[self.poi_last][0] > self.graph[self.poi_start][0]:
-                            self.turn = self.left
+                            self.turn = str(self.left).strip("\n")
 
                         # default turn instruction
                         else:
                             self.turn = self.forward
 
-                        print("Self.Turn: ", self.turn)
-                        print("poi_prev", self.poi_prev)
-                        print("poi_prev", self.poi_start)
-                        print("poi_prev", self.poi_last)
-                        
-##                        print("graph prev X: ", self.graph[self.poi_prev][0])
-##                        print("graph prev y: ", self.graph[self.poi_prev][1])
-##                        print("graph start X: ", self.graph[self.poi_prev][0])
-##                        print("graph start y: ", self.graph[self.poi_prev][1])
-##                        print("graph last X: ", self.graph[self.poi_prev][0])
-##                        print("graph last y: ", self.graph[self.poi_prev][1])
-
-
-
                         
                         # make sure to preserve the prev_path if the new_path is length 2
                         if len(self.new_path) > 2:
 
-                            print("inside direct: Inside new_path>2 comparison")
-                            print(self.poi_start)
                             # updates path
                             self.prev_path = self.new_path
 
 
-##                # length of prev_path is two. This should never arise as a case unless the user scans
-##                # the same node twice
-##                elif path_length == 2:
-##                    
-##                    # one case is that you have arrived
-##                    if self.poi_next == self.poi_start:
-##                        
-##                        self.turn = self.arrived
-##                        
-##                    # the other case worth noting is when the second value (i.e.destination)
-##                    # from the old path is not the same as the destination in the new path
-##                    elif self.poi_next is not self.prev_path[1]:
-##                        self.turn = self.turn_around
-##                        
-##                    # the third circumstance is when the user hadn't moved and re-scanned the node
-##                    else:
-##                        self.turn = self.forward
-##
-##        
-##        # there is only one or no values, which should not happen
-##        else:
-##            if path_length == 1 and self.poi_start == self.new_path[0]:
-##                self.turn = self.arrived
-##
-##            else:
-##                self.turn = self.choose_dest
+
         return
 
 
@@ -2240,7 +2195,6 @@ while True:
         # Once this is debugged, add the condition as a second argument in the if statement below
         if (camera.resultQR is not "") and camera.resultQR in graph.nodes:
             qr_code = camera.resultQR
-            print(camera.resultQR)
             # expected values
             if qr_code is not end_node:
                 
@@ -2263,6 +2217,7 @@ while True:
                 x_orientaion, y_orientation = imu.changeOfBasis(A_x, A_y, ave_readings[6:9])
                 x_len, y_len = imu.normalizeProjection(x_orientaion, y_orientation)
                 feedback.processOrientation(x_len, y_len)
+                feedback.direct_tts()
                 #feedback.processOrientation(imu.normalizeProjection(imu.changeOfBasis(A_x, A_y, ave_readings[6:9])))
                 
 
@@ -2318,7 +2273,14 @@ while True:
     # providing haptic feedback
     # once destination == current_node (origin), got to state 3
     while state == 3:
-        print("Inside State 3")
+        x_orientaion, y_orientation = imu.changeOfBasis(A_x, A_y, ave_readings[6:9])
+        x_len, y_len = imu.normalizeProjection(x_orientaion, y_orientation)
+        feedback.processOrientation(x_len, y_len)
+        feedback.process_turn()
+        feedback.direct_tts()
+        # if so, send haptic signal
+        haptic.playEffect(feedback.effect)
+        
         # scan for a QR code
         camera.qrGet()                  # camera.qrGet() returns a string
 
@@ -2326,8 +2288,7 @@ while True:
         # also check if the qr_code belongs to a value on the grid
         if (camera.resultQR is not "") and (camera.resultQR in graph.nodes):
             qr_code = camera.resultQR
-            print("Inside State 3 first if statement")
-            print(qr_code)
+
             if qr_code == end_node:
 
                 feedback.update_room(destination)
@@ -2346,10 +2307,12 @@ while True:
                 feedback.update_room(graph.rooms[qr_code][0])
                 os.system(feedback.update_current_loc_tts)
 
-                #
-                feedback.process_turn
-                #
-                feedback.direct_tts
+                # see if user needs to turn
+                feedback.process_turn()
+                # if so, send haptic signal
+                haptic.playEffect(feedback.effect)
+                # and tell them
+                feedback.direct_tts()
                 
                 
                 # save new_path
