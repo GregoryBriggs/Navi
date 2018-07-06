@@ -746,6 +746,13 @@ class Feedback():
             # you have gone the wrong way
             self.turn = self.turn_around
 
+
+##            # if length of new path is greater than 3, assign old path to new path
+##            if len(self.new_path) > 2:
+
+            # assign the old path to new path
+            self.prev_path = self.new_path
+
             # MAY NOT BE REQUIRED
             self.wrong_way = True
 
@@ -776,7 +783,7 @@ class Feedback():
 
                         # This if else block check all left/right combo options
                         # Note: first four checks are for clockwise rotation,
-                        #       next four checks are for counter-clockwise rotations.
+                        #       next four checks are for counter-clockwise rotations.                   
 
                         # start is above prev and last is right of start
                         if self.graph[self.poi_prev][1] < self.graph[self.poi_start][1] and self.graph[self.poi_last][0] > self.graph[self.poi_start][0]:
@@ -791,7 +798,7 @@ class Feedback():
                             self.turn = str(self.right).strip("\n")
                             
                         # start is left of prev and last is above start
-                        elif self.graph[self.poi_prev][0] > self.graph[self.poi_start][0] and self.graph[self.poi_last][0] < self.graph[self.poi_start][0]:
+                        elif self.graph[self.poi_prev][0] > self.graph[self.poi_start][0] and self.graph[self.poi_last][1] > self.graph[self.poi_start][1]:
                             self.turn = str(self.right).strip("\n")
 
                         # start is right of prev and last is above start
@@ -821,7 +828,13 @@ class Feedback():
                             # updates path
                             self.prev_path = self.new_path
 
+                # if the path is length two, the user overshot the destination by one. Tell them to turn around
+                else: 
 
+                    # tell the user to turn around
+                    self.turn = self.turn_around
+                    #assign the new path to the old path
+                    self.prev_path = self.new_path
 
         return
 
@@ -880,7 +893,27 @@ class Feedback():
     #  @param [in] self The object pointer.
     #  @param [in] ax_under Normalized magnetometer projection onto x-axis
     #  @param [in] ay_under Normalized magnetometer projection onto y-axis
-    def processOrientation(self, ax_under, ay_under):
+    def processOrientation(self, tup_ax_ay_under):
+
+        # variable initialization from passed tuple value of length 3
+        ax_under = 0.0
+        ay_under = 0.0
+        a_length = 0.0
+
+        # for computing the projection of magnetometer reading onto the edge vector
+        b_dot_b = 0.0
+        a_dot_b = 0.0
+        scale_b = 0.0
+        bx_proj = 0.0
+        by_proj = 0.0
+        b_length = 0.0
+        cos_theta = 0.0 
+        
+        ax_under = tup_ax_ay_under[0]
+        ay_under = tup_ax_ay_under[1]
+        a_length = tup_ax_ay_under[2]
+
+        
         # as long as self.new_path has two values, check if feedback is needed
         if (len(self.new_path) > 1):
             # check array to see if values are in self.graph. if not, we're done here
@@ -1724,7 +1757,7 @@ class MPU9250:
     # @param [in] getMagnitude (boolean)
     # @param [in] getVelocity (boolean)
     # @retval averageReadings (float), total_sample_time (int), magMag (float), speed (float)
-    def readIMU(self, readAcc, readGyro, readMag, getMagnitude, getVelocity):
+    def readIMU(self, rdAcc, rdGyro, rdMag, getMagnitude, getVelocity):
         
         #Select proper delay time for reading data based on sensor settings. Double delay to increase data reliability
         sample_delay = 2/(self.gres*32760)      # Long wait to ensure more accurate data 
@@ -1735,13 +1768,13 @@ class MPU9250:
         readTemp=False
 
         # someone called the function without passing any values 
-        if readAcc is False and readGyro is False and readMag is False:
+        if rdAcc is False and rdGyro is False and rdMag is False:
             readTemp = True
 
-        elif readMag is True:                
+        elif rdMag is True:                
             # set gyro and acc as nested for loop, assuming count starts at 0 and goes to 19 (20 total readings). Time so by the ith reading, the mag is ready
             for QUICK_READ_ALL in range (20):
-                if readAcc is True or readGyro is True:
+                if rdAcc is True or rdGyro is True:
                     #Starting at 1 and going to 40 (40 readings)
                     for ACC_GYRO in range (int(acc_gyro_samples)):
                         if readAcc is True:    
@@ -1758,25 +1791,29 @@ class MPU9250:
                         
                         time.sleep(sample_delay) # 200Hz sample rate from SMPLRT_DIV, 0x04 line
                     # set as parent loop, as it is slower. wait for the time required fo gyro/acc to stabilize
+                    
+                else:
+                    time.sleep(sample_delay) # 200Hz sample rate from SMPLRT_DIV, 0x04 line
+                    
                 mag = MPU9250.readMagnet(self)
                 averageReadings[6] = averageReadings[6] + mag[0]
                 averageReadings[7] = averageReadings[7] + mag[1]
                 averageReadings[8] = averageReadings[8] + mag[2]
             
-        elif readMag is False:
+        elif rdMag is False:
             #Starting at 1 and going to 40 (40 readings)
-            for ACC_GYRO in range (acc_gyro_samples):
-                if readAcc is True:    
-                    accel = mpu9250.readAccel()
-                    averageReadings[0] = averageReadings[0] + self.accel[0]
-                    averageReadings[1] = averageReadings[1] + self.accel[1]
-                    averageReadings[2] = averageReadings[2] + self.accel[2]
+            for ACC_GYRO in range (int(acc_gyro_samples)):
+                if rdAcc is True:    
+                    accel = self.readAccel()
+                    averageReadings[0] = averageReadings[0] + accel[0]
+                    averageReadings[1] = averageReadings[1] + accel[1]
+                    averageReadings[2] = averageReadings[2] + accel[2]
 
-                if readGryo is True:
-                    gyro = mpu9250.readGyro()
-                    averageReadings[3] = averageReadings[3] + self.gyro[0]
-                    averageReadings[4] = averageReadings[4] + self.gyro[1]
-                    averageReadings[5] = averageReadings[5] + self.gyro[2]
+                if rdGyro is True:
+                    gyro = self.readGyro()
+                    averageReadings[3] = averageReadings[3] + gyro[0]
+                    averageReadings[4] = averageReadings[4] + gyro[1]
+                    averageReadings[5] = averageReadings[5] + gyro[2]
                 
                 time.sleep(sample_delay) # 200Hz sample rate from SMPLRT_DIV, 0x04 line
 
@@ -1806,8 +1843,14 @@ class MPU9250:
         speed = total_sample_time * math.sqrt(averageReadings[0] ** 2 + averageReadings[1] ** 2 + averageReadings[2] ** 2)
         
         # ToDo: Change dict key-value pair (mimics c switch statment)
-        if readAcc is False and readGyro is False and readMag is False:
+        if rdAcc is False and rdGyro is False and rdMag is False:
             return 0
+
+        # only read the magnetometer
+        elif rdMag is True and rdGyro is False and rdAcc is False:
+            # only return the magnetometer values
+            return averageReadings[6:9]
+            
         
         elif getMagnitude == False and getVelocity == False:
             # Only return the average readings and total sample time
@@ -1836,7 +1879,9 @@ class MPU9250:
         # Copy the contents ofthe vectors
         self.v1 = x1UnderB.copy()
         self.v2 = x2UnderB.copy()
-        self.b = userUnderB.copy()
+
+        # Expecting a list of lists, where first three entries are desired
+        self.b = list(userUnderB).copy()
 
         # divide first row by first value in first row
         self.v2[0] = self.v2[0]/self.v1[0]
@@ -1857,15 +1902,27 @@ class MPU9250:
         # return the x and y values. These are the user's coordinates on the grid
         return self.b[0], self.b[1]
 
-    def normalizeProjection(self, xlen, ylen):
-        self.length = 0.0       
+    def normalizeProjection(self, tup_x_y):
+
+        # keeps x, y, r, and theta at indices 0, 1, 2, and 3, respectively
+        norm_xy_and_r_theta = [0.0,0.0,0.0]
+        tup_x_y = list(tup_x_y)
+        
+        norm_xy_and_r_theta[0] = tup_x_y[0]
+        norm_xy_and_r_theta[1] = tup_x_y[1]
+        
+        # Distance. Note tup_x_y[0] is x and tup_x_y[1] is y
+        norm_xy_and_r_theta[2] = math.sqrt(norm_xy_and_r_theta[0]**2 + norm_xy_and_r_theta[1]**2)
         
         # normalize the values by dividing components by the length of the 
-        length = math.sqrt(xlen**2 + ylen**2)
-        xlen = xlen / length
-        ylen = ylen / length
+        if norm_xy_and_r_theta[2] != 0 :
+            norm_xy_and_r_theta[0] = norm_xy_and_r_theta[0] / norm_xy_and_r_theta[2]    # Assign x
+            norm_xy_and_r_theta[1] = norm_xy_and_r_theta[1] / norm_xy_and_r_theta[2]    # Assign y
 
-        return xlen, ylen
+        # now that x and y are normalized, check value by re-computing the length. Should be 1
+        norm_xy_and_r_theta[2] = math.sqrt(norm_xy_and_r_theta[0]**2 + norm_xy_and_r_theta[1]**2)
+        
+        return norm_xy_and_r_theta
 
     # getAngles()
     # @param [in] self The object pointer.
@@ -1923,149 +1980,159 @@ class MPU9250:
             # If no instantaneous data is required, return.
             return
 
-# This program implements the above classe to help navigate the visually impaired
-while True:
-   
-    # ToDo: setup threads. Four cores, four threads
-    # ToDo: check on initialized variables in while loops if they are global or localwhile 
-    # Core 1: QR code scan
-    # Core 2: Shortest Path
-    # Core 3: Feedback
-    # Core 4: talk to text/ text to talk
-    ## setup class variables
-    input = Input()
-    camera = cameraGUI()
-    graph = Graph()
-    imu = MPU9250()
-    haptic = Adafruit_DRV2605()
-    feedback = Feedback()
-    
-    ## 'Global' variables
-    ## check if these are used
- 
-    turn_left = False          # Used for feedack from either/ both grid results and current
-    turn_right = False         #
-    turn_around = False        #
-    distance_update = False    #
-    dist_remain = 0             # distance until destination or corne    
-    
-    ## These variables are used
-    distance = 0.0              # used to return distance value from calls to shortest path
-    dist_rem = distance         #
-    path = {}                   # default dictionary
-    qr_code = ""                # rerived QR code from pi cam scan
-    end_node = ""               # end of path
-    current_node = ""           # state == 1 requires this to start scanning from the camera
-    select_dest = False         # informs the program when destination has been selected    
-    button_state  = False       # used for confirming button pushes
-    state = 0                   # Keeps track of the current state the program exists in 
-    destination = 0             # a room number
-    counter = 0               # generic counter used in all states for feedback after specific iterations through a loop
-    max_counter = 1000000              # maximum count @Param:counter reaches
-    
-    ## Magnetometer Variables
-    getMag = True
-    getAcc = True
-    getGyro = True
-    magnitudeMagnetometer = True
-    speed = True
-
-    noMag = False
-    noAcc = False
-    noGyro = False
-    noMagMag = False
-    noSpeed = False
-    
-    ave_sample_time = 0.0                                        # sample time of the last reading from the IMU
-    ave_readings = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]    # stores last readings of IMU
-    A_x = [-3.5191, 32.6908, 55.998]                    # grid's mag reading in the +x-direction
-    A_y = [-5.1537, 8.24405, 55.108]                    # grid's mag reading in the +y-direction
-    ax_under_b = 0.0
-    ay_under_b = 0.0
 
 
 
 
-    # used for labeling nodes
-    for node in ['A', 'B', 'C', 'D', 'E', 'F', 'G','H', 'I', 'J', 'K',
-                 'L', 'M','N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V']:
 
-        graph.add_node(node)
+# ToDo: setup threads. Four cores, four threads
+# ToDo: check on initialized variables in while loops if they are global or localwhile 
+# Core 1: QR code scan
+# Core 2: Shortest Path
+# Core 3: Feedback
+# Core 4: talk to text/ text to talk
+## setup class variables
+input = Input()
+camera = cameraGUI()
+graph = Graph()
+imu = MPU9250()
+haptic = Adafruit_DRV2605()
+feedback = Feedback()
 
-    # used for selecting destination
-    graph.rooms = OrderedDict(sorted({'A':[340, 341, 342, 343], 'B':[344,345,346,347], 'C':[348,349,350,351], 
-                'D':[353], 'E':[355], 'F':[357], 'G':[359],'H':[361], 'I':[363], 'J':[365], 'K':[367],
-                'L':[369], 'M':[371],'N':[373], 'O':[375], 'P':[377], 'Q':[379], 'R':[381], 'S':[383], 'T':[385]}.items()))
+## 'Global' variables
+## check if these are used
 
-    graph.node_cart_coord = OrderedDict(sorted({'A':[0,0], 'B':[0,21], 'C':[0,49], 'D':[0,161], 'E':[0,201], 
-                'F':[39,201], 'G':[73,201],'H':[100,201], 'I':[145,201], 'J':[183,201],
-                'K':[183,161], 'L':[183,100], 'M':[183,49],'N':[183,21], 'O':[183,0],
-                'P':[163,0], 'Q':[133,0], 'R':[100,0], 'S':[80,0], 'T':[65,0]}.items()))
+turn_left = False          # Used for feedack from either/ both grid results and current
+turn_right = False         #
+turn_around = False        #
+distance_update = False    #
+dist_remain = 0             # distance until destination or corne    
+
+## These variables are used
+distance = 0.0              # used to return distance value from calls to shortest path
+dist_rem = distance         #
+path = {}                   # default dictionary
+qr_code = ""                # rerived QR code from pi cam scan
+end_node = ""               # end of path
+current_node = ""           # state == 1 requires this to start scanning from the camera
+select_dest = False         # informs the program when destination has been selected    
+button_state  = False       # used for confirming button pushes
+state = 0                   # Keeps track of the current state the program exists in 
+destination = 0             # a room number
+counter = 0               # generic counter used in all states for feedback after specific iterations through a loop
+max_counter = 1000000              # maximum count @Param:counter reaches
+
+## Magnetometer Variables
+getMag = True
+getAcc = True
+getGyro = True
+magnitudeMagnetometer = True
+speed = True
+
+noMag = False
+noAcc = False
+noGyro = False
+noMagMag = False
+noSpeed = False
+
+ave_sample_time = 0.0                                        # sample time of the last reading from the IMU
+ave_readings = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]    # stores last readings of IMU
+A_x = [-3.5191, 32.6908, 55.998]                    # grid's mag reading in the +x-direction
+A_y = [-5.1537, 8.24405, 55.108]                    # grid's mag reading in the +y-direction
+ax_under_b = 0.0
+ay_under_b = 0.0
 
 
 
-    graph.add_edge('T', 'A', -65, 0)
-    graph.add_edge('A', 'B', 0, 21)
-    graph.add_edge('B', 'C', 0, 28)  #30 across, going up.
-    graph.add_edge('C', 'D', 0, 112)
-    graph.add_edge('D', 'E', 0, 40)
 
-    graph.add_edge('A', 'T', 65, 0)
-    graph.add_edge('B', 'A', 0, -21)
-    graph.add_edge('C', 'B', 0, -28) # going down
-    graph.add_edge('D', 'C', 0, -112)
-    graph.add_edge('E', 'D', 0, -40)
+# used for labeling nodes
+for node in ['A', 'B', 'C', 'D', 'E', 'F', 'G','H', 'I', 'J', 'K',
+             'L', 'M','N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V']:
+
+    graph.add_node(node)
+
+# used for selecting destination
+graph.rooms = OrderedDict(sorted({'A':[340, 341, 342, 343], 'B':[344,345,346,347], 'C':[348,349,350,351], 
+            'D':[353], 'E':[355], 'F':[357], 'G':[359],'H':[361], 'I':[363], 'J':[365], 'K':[367],
+            'L':[369], 'M':[371],'N':[373], 'O':[375], 'P':[377], 'Q':[379], 'R':[381], 'S':[383], 'T':[385]}.items()))
+
+graph.node_cart_coord = OrderedDict(sorted({'A':[0,0], 'B':[0,21], 'C':[0,49], 'D':[0,161], 'E':[0,201], 
+            'F':[39,201], 'G':[73,201],'H':[100,201], 'I':[145,201], 'J':[183,201],
+            'K':[183,161], 'L':[183,100], 'M':[183,49],'N':[183,21], 'O':[183,0],
+            'P':[163,0], 'Q':[133,0], 'R':[100,0], 'S':[80,0], 'T':[65,0]}.items()))
+
+
+
+graph.add_edge('T', 'A', -65, 0)
+graph.add_edge('A', 'B', 0, 21)
+graph.add_edge('B', 'C', 0, 28)  #30 across, going up.
+graph.add_edge('C', 'D', 0, 112)
+graph.add_edge('D', 'E', 0, 40)
+
+graph.add_edge('A', 'T', 65, 0)
+graph.add_edge('B', 'A', 0, -21)
+graph.add_edge('C', 'B', 0, -28) # going down
+graph.add_edge('D', 'C', 0, -112)
+graph.add_edge('E', 'D', 0, -40)
 
 # room E to J
-    graph.add_edge('E', 'F', 39, 0)
-    graph.add_edge('F', 'G', 34, 0)
-    graph.add_edge('G', 'H', 27, 0)  #30 across, ->
-    graph.add_edge('H', 'I', 45, 0) 
-    graph.add_edge('I', 'J', 38, 0)
+graph.add_edge('E', 'F', 39, 0)
+graph.add_edge('F', 'G', 34, 0)
+graph.add_edge('G', 'H', 27, 0)  #30 across, ->
+graph.add_edge('H', 'I', 45, 0) 
+graph.add_edge('I', 'J', 38, 0)
 
-    graph.add_edge('F', 'E', -39, 0)
-    graph.add_edge('G', 'F', -34, 0)
-    graph.add_edge('H', 'G', -27, 0)  #<--Direction
-    graph.add_edge('I', 'H', -45, 0)
-    graph.add_edge('J', 'I', -38, 0)
+graph.add_edge('F', 'E', -39, 0)
+graph.add_edge('G', 'F', -34, 0)
+graph.add_edge('H', 'G', -27, 0)  #<--Direction
+graph.add_edge('I', 'H', -45, 0)
+graph.add_edge('J', 'I', -38, 0)
 
-    # rooms J to P
+# rooms J to O
 
-    graph.add_edge('J', 'K', 0, -40)
-    graph.add_edge('K', 'L', 0, -61)
-    graph.add_edge('L', 'M', 0, -51)
-    graph.add_edge('M', 'N', 0, -28)  #30 across, direction going down
-    graph.add_edge('N', 'O', 0, -21)
+graph.add_edge('J', 'K', 0, -40)
+graph.add_edge('K', 'L', 0, -61)
+graph.add_edge('L', 'M', 0, -51)
+graph.add_edge('M', 'N', 0, -28)  #30 across, direction going down
+graph.add_edge('N', 'O', 0, -21)
 
-    graph.add_edge('K', 'J', 0, 40)
-    graph.add_edge('L', 'K', 0, 61)
-    graph.add_edge('M', 'L', 0, 51)
-    graph.add_edge('N', 'M', 0, 28)  #30 across, direction going UP
-    graph.add_edge('O', 'N', 0, 21)
+graph.add_edge('K', 'J', 0, 40)
+graph.add_edge('L', 'K', 0, 61)
+graph.add_edge('M', 'L', 0, 51)
+graph.add_edge('N', 'M', 0, 28)  #30 across, direction going UP
+graph.add_edge('O', 'N', 0, 21)
 
-    #rooms O to t
+#rooms O to t
 
-    graph.add_edge('O', 'P', -20, 0)
-    graph.add_edge('P', 'Q', -30, 0)
-    graph.add_edge('Q', 'R', -33, 0)  #30 ACROSS  <<--
-    graph.add_edge('R', 'S', -20, 0)
-    graph.add_edge('S', 'T', -15, 0)
+graph.add_edge('O', 'P', -20, 0)
+graph.add_edge('P', 'Q', -30, 0)
+graph.add_edge('Q', 'R', -33, 0)  #30 ACROSS  <<--
+graph.add_edge('R', 'S', -20, 0)
+graph.add_edge('S', 'T', -15, 0)
 
-    graph.add_edge('P', 'O', 20, 0)
-    graph.add_edge('Q', 'P', 30, 0)
-    graph.add_edge('R', 'Q', 33, 0)  #30 ACROSS  ->>
-    graph.add_edge('S', 'R', 20, 0)
-    graph.add_edge('T', 'S', 15, 0)
+graph.add_edge('P', 'O', 20, 0)
+graph.add_edge('Q', 'P', 30, 0)
+graph.add_edge('R', 'Q', 33, 0)  #30 ACROSS  ->>
+graph.add_edge('S', 'R', 20, 0)
+graph.add_edge('T', 'S', 15, 0)
 
-    
-    # start at an arbitrary room in the nodes dictionary stored in graph
-    destination = 340
 
-    # used for directional feedback
-    feedback.graph = graph.node_cart_coord
+# start at an arbitrary room in the nodes dictionary stored in graph
+destination = 340
 
-    # start the state machine
-    state = 1
+# used for directional feedback
+feedback.graph = graph.node_cart_coord
+
+# start the state machine
+state = 1
+
+
+
+
+
+
+# This program implements the above classe to help navigate the visually impaired
+while True:
 
     # This state scans for initial input for a reference point on the grid
     while state  == 1:
@@ -2108,7 +2175,7 @@ while True:
                     destination = graph.prev_room(end_node, destination)
                     feedback.update_room(destination)
                     os.system(feedback.room_change_tts)
-                    end_node = graph.get_dest(feedback.room)
+                    end_node = graph.get_dest(destination)
                     feedback.room = destination
                     counter = 0
                     
@@ -2210,13 +2277,11 @@ while True:
                 os.system(feedback.start_node)
                 
                 # get user's orientation to the grid from magnetometer
-                ave_readings, ave_sample_time = imu.readIMU(noAcc, noGyro, getMag, noMagMag, noSpeed)
-                
-                # set user in correct direction using readings and image matrix
+                                # set user in correct direction using readings and image matrix
                 # steps done below: change basis projection, normalize result, and set Feedback.self to some direction
-                x_orientaion, y_orientation = imu.changeOfBasis(A_x, A_y, ave_readings[6:9])
-                x_len, y_len = imu.normalizeProjection(x_orientaion, y_orientation)
-                feedback.processOrientation(x_len, y_len)
+                feedback.processOrientation(imu.normalizeProjection(imu.changeOfBasis(A_x, A_y, imu.readMagnet())))
+                feedback.process_turn()
+                haptic.playEffect(feedback.effect)
                 feedback.direct_tts()
                 #feedback.processOrientation(imu.normalizeProjection(imu.changeOfBasis(A_x, A_y, ave_readings[6:9])))
                 
@@ -2273,13 +2338,11 @@ while True:
     # providing haptic feedback
     # once destination == current_node (origin), got to state 3
     while state == 3:
-        x_orientaion, y_orientation = imu.changeOfBasis(A_x, A_y, ave_readings[6:9])
-        x_len, y_len = imu.normalizeProjection(x_orientaion, y_orientation)
-        feedback.processOrientation(x_len, y_len)
-        feedback.process_turn()
-        feedback.direct_tts()
-        # if so, send haptic signal
-        haptic.playEffect(feedback.effect)
+##        feedback.processOrientation(imu.normalizeProjection(imu.changeOfBasis(A_x, A_y, imu.readMagnet())))
+##        feedback.process_turn()
+##        # if so, send haptic signal
+##        haptic.playEffect(feedback.effect)
+##        feedback.direct_tts()
         
         # scan for a QR code
         camera.qrGet()                  # camera.qrGet() returns a string
@@ -2287,6 +2350,7 @@ while True:
         # if this qr_code has a value, a qr_code was scanned
         # also check if the qr_code belongs to a value on the grid
         if (camera.resultQR is not "") and (camera.resultQR in graph.nodes):
+
             qr_code = camera.resultQR
 
             if qr_code == end_node:
@@ -2302,17 +2366,18 @@ while True:
                 
                 # find the direction to turn or the next command
                 feedback.direct()
+                feedback.direct_tts()
 
                 # update user by nearby room number
                 feedback.update_room(graph.rooms[qr_code][0])
                 os.system(feedback.update_current_loc_tts)
 
-                # see if user needs to turn
-                feedback.process_turn()
-                # if so, send haptic signal
-                haptic.playEffect(feedback.effect)
-                # and tell them
-                feedback.direct_tts()
+##                # see if user needs to turn
+##                feedback.process_turn()
+##                # if so, send haptic signal
+##                haptic.playEffect(feedback.effect)
+##                # and tell them
+##                feedback.direct_tts()
                 
                 
                 # save new_path
@@ -2325,7 +2390,8 @@ while True:
         else:
             camera.resultQR = ""
            
-            
+        
+        
         # check if user manually interrupts to change destination
         if GPIO.input(select_next) or GPIO.input(select_prev) or GPIO.input(select_current):
             
