@@ -1,4 +1,4 @@
- # Imports
+
 
 import os
 import subprocess
@@ -15,440 +15,6 @@ import smbus as smbus                       # used for peripheral calls to both 
 import subprocess
 import time
 
-''' GPIO setup'''
-# Using the pin layout on the board, where 1 is top left
-GPIO.setmode(GPIO.BOARD)
-
-# Setup buttons for selecting destination as user input
-select_next = 12    # GPIO_GEN1, GPIO18, or pin number 12 on the board
-select_prev = 16    # GPIO_GEN4, GPIO23, or pin number 16 on the board
-select_current = 18 # GPIO_GEN5, GPIO25, or pin number 18 on the board
-
-# setup GPIO buttons as input
-GPIO.setup(select_next, GPIO.IN, )
-GPIO.setup(select_prev, GPIO.IN)
-GPIO.setup(select_current, GPIO.IN)
-
-''' End GPIO setup'''
-
-# Class used for processing input, such as debounce
-class Input():
-    
-    def __init__(self):
-        self.max_count = 1000
-
-
-    def debounce(self, gpio_pin):
-        counter = 0
-        button_state = False
-        
-        for count_on in range(1000):
-            if GPIO.input(gpio_pin):
-                counter += 1
-
-        if counter >= self.max_count and GPIO.input(gpio_pin):
-            button_state = True
-
-        return button_state
-    
-    def deb_mult(self, pins):
-        counter = 0
-        button_state = False
-        button = 0
-        
-        for count_on in range(1000):
-            if len(pins) > 0:
-                for pin in range(len(pins)):
-                    if GPIO.input(pins[pin]):
-                        button = pins[pin]
-                        counter += 1
-          #  else:
-                # oops! what to do?
-  
-                    
-
-        if counter >= self.max_count and GPIO.input(button):
-            button_state = True
-
-        return button_state
-
-
-
-''' MPU-9250 Definitions '''
-# coding: utf-8
-# Greg Briggs
-#  MPU_9250 code adapted from FaBo9Axis_MPU9250 library for the FaBo 9AXIS I2C Brick 
-#  and translatiion from Arduino to Python from kriswiner/MPU9250 on GitHub. 
-#  Functions written by Greg Briggs include changeOfBasis and readIMU functions.
-#  http://fabo.io/202.html
-#  https://cdn.sparkfun.com/assets/learn_tutorials/5/5/0/MPU-9250-Register-Map.pdf
-#  https://www.invensense.com/wp-content/uploads/2015/02/PS-MPU-9250A-01-v1.1.pdf
-#  
-#  Adapted source code was 
-#  released under APACHE LICENSE, VERSION 2.0
-#
-#  http://www.apache.org/licenses/
-#
-#  FaBo <info@fabo.io>
-
-
-
-## MPU9250 Default I2C slave address
-SLAVE_ADDRESS        = 0x68
-## AK8963 I2C slave address
-AK8963_SLAVE_ADDRESS = 0x0C
-## Device id
-DEVICE_ID            = 0x71
-
-''' MPU-9250 Register Addresses '''
-## sample rate driver
-SELF_TEST_X_GYRO = 0x0
-SELF_TEST_Y_GYRO = 0x1
-SELF_TEST_Z_GYRO = 0x2
-SELF_TEST_X_ACCEL = 0xD
-SELF_TEST_Y_ACCEL = 0xE
-SELF_TEST_Z_ACCEL = 0xF
-SMPLRT_DIV     = 0x19
-CONFIG         = 0x1A
-GYRO_CONFIG    = 0x1B
-ACCEL_CONFIG   = 0x1C
-ACCEL_CONFIG_2 = 0x1D
-LP_ACCEL_ODR   = 0x1E
-WOM_THR        = 0x1F
-FIFO_EN        = 0x23
-I2C_MST_CTRL   = 0x24
-I2C_MST_STATUS = 0x36
-INT_PIN_CFG    = 0x37
-INT_ENABLE     = 0x38
-INT_STATUS     = 0x3A
-ACCEL_OUT      = 0x3B
-TEMP_OUT       = 0x41
-GYRO_OUT       = 0x43
-
-XG_OFFSET_H    = 0x13
-XG_OFFSET_L    = 0x14
-YG_OFFSET_H    = 0x15
-YG_OFFSET_L    = 0x16
-ZG_OFFSET_H    = 0x17
-ZG_OFFSET_L    = 0x18
-ACCEL_XOUT_H   = 0x3B
-ACCEL_XOUT_L   = 0x3C
-ACCEL_YOUT_H   = 0x3D
-ACCEL_YOUT_L   = 0x3E
-ACCEL_ZOUT_H   = 0x3F
-GYRO_XOUT_H    = 0x43
-GYRO_XOUT_H    = 0x44
-GYRO_XOUT_H    = 0x45
-GYRO_XOUT_H    = 0x46
-GYRO_XOUT_H    = 0x47
-GYRO_XOUT_H    = 0x48
-ACCEL_ZOUT_L   = 0x40
-XA_OFFSET_H    = 0x77
-XA_OFFSET_L    = 0x78
-YA_OFFSET_H    = 0x7A
-YA_OFFSET_L    = 0x7B
-ZA_OFFSET_H    = 0x7D
-ZA_OFFSET_L    = 0x7E
-
-I2C_MST_DELAY_CTRL = 0x67
-SIGNAL_PATH_RESET  = 0x68
-MOT_DETECT_CTRL    = 0x69
-USER_CTRL          = 0x6A
-PWR_MGMT_1         = 0x6B
-PWR_MGMT_2         = 0x6C
-FIFO_COUNTH        = 0x72
-FIFO_R_W           = 0x74
-WHO_AM_I           = 0x75
-
-## Gyro Full Scale Select 250dps
-GFS_250  = 0x00
-## Gyro Full Scale Select 500dps
-GFS_500  = 0x01
-## Gyro Full Scale Select 1000dps
-GFS_1000 = 0x02
-## Gyro Full Scale Select 2000dps
-GFS_2000 = 0x03
-## Accel Full Scale Select 2G
-AFS_2G   = 0x00
-## Accel Full Scale Select 4G
-AFS_4G   = 0x01
-## Accel Full Scale Select 8G
-AFS_8G   = 0x02
-## Accel Full Scale Select 16G
-AFS_16G  = 0x03
-
-# AK8963 Register Addresses
-AK8963_ST1        = 0x02
-AK8963_MAGNET_OUT = 0x03
-AK8963_CNTL1      = 0x0A
-AK8963_CNTL2      = 0x0B
-AK8963_ASAX       = 0x10
-
-# CNTL1 Mode select
-## Power down mode
-AK8963_MODE_DOWN   = 0x00
-## One shot data output
-AK8963_MODE_ONE    = 0x01
-
-## Continous data output 8Hz
-AK8963_MODE_C8HZ   = 0x02
-## Continous data output 100Hz
-AK8963_MODE_C100HZ = 0x06
-
-# Magneto Scale Select
-## 14bit output
-AK8963_BIT_14 = 0x00
-## 16bit output
-AK8963_BIT_16 = 0x01
-
-# Pin definitions
-intPin = 12 # These can be changed, 2 and 3 are the Arduinos ext int pins
-
-accelCount = [0.0, 0.0, 0.0]# Stores the 16-bit signed accelerometer sensor output
-gyroCount = [0.0, 0.0, 0.0] # Stores the 16-bit signed gyro sensor output
-magCount = [0.0, 0.0, 0.0]# Stores the 16-bit signed magnetometer sensor output
-magCalibration = [0.0, 0.0, 0.0] 
-magbias = [0.0, 0.0, 0.0] # Factory mag calibration and mag bias
-gyroBias = [0.0, 0.0, 0.0] 
-accelBias = [0.0, 0.0, 0.0] # Bias corrections for gyro and accelerometer
-ax, ay, az, gx, gy, gz, mx, my, mz = (0, 0, 0, 0, 0, 0, 0, 0, 0) # variables to hold latest sensor data values 
-tempCount = 0 # Stores the real internal chip temperature in degrees Celsius
-temperature = 0.0
-SelfTest = [0.0,0.0,0.0,0.0,0.0,0.0]
-
-delt_t = 0 # used to control display output rate
-count = 0 # used to control display output rate
-
-# parameters for 6 DoF sensor fusion calculations
-GyroMeasError = math.pi * (60.0 / 180.0)     # gyroscope measurement error in rads/s (start at 60 deg/s), then reduce after ~10 s to 3
-beta = math.sqrt(3.0 / 4.0) * GyroMeasError  # compute beta
-GyroMeasDrift = math.pi * (1.0 / 180.0) #gyroscope measurement drift in rad/s/s (start at 0.0 deg/s/s)
-zeta = math.sqrt(3.0 / 4.0) * GyroMeasDrift  # compute zeta, the other free parameter in the Madgwick scheme usually set to a small or zero value
-# Check values for Kp and Ki, as the documentation commented out these variables with the values assigned below
-Kp = 2.0 * 10.0     #define Kp 2.0 * 5.0 # these are the free parameters in the Mahony filter and fusion scheme, Kp for proportional feedback, Ki for integral
-Ki = 0.0            #define Ki 0.0
-
-pitch, yaw, roll = (0.0, 0.0, 0.0)  # Instantiation for quaterion-calculated ptch yaw roll
-deltat = 0.0                      # integration interval for both filter schemes
-lastUpdate = 0  			# used to calculate integration interval 
-firstUpdate = 0  			# used to calculate integration interval 
-Now = 0                            	# used to calculate integration interval                             
-q = [1.0, 0.0, 0.0, 0.0]     	# vector to hold quaternion
-eInt = [0.0, 0.0, 0.0]             	# vector to hold integral error for Mahony method
-
-## smbus
-bus = smbus.SMBus(1)
-''' End of MPU-9250 Register Addresses '''
-
-''' Beginning of Haptic Motor Driver Addresses and Code'''
-bus = smbus.SMBus(1) # 0 = /dev/i2c-0 (port I2C0), 1 = /dev/i2c-1 (port I2C1)
-
-DRV2605_ADDR = 0x5A
-
-# Feedback Effects
-BUZZ_100 = 47
-
-DRV2605_REG_STATUS = 0x00
-DRV2605_REG_MODE = 0x01
-DRV2605_MODE_INTTRIG = 0x00
-DRV2605_MODE_EXTTRIGEDGE = 0x01
-DRV2605_MODE_EXTTRIGLVL = 0x02
-DRV2605_MODE_PWMANALOG = 0x03
-DRV2605_MODE_AUDIOVIBE = 0x04
-DRV2605_MODE_REALTIME = 0x05
-DRV2605_MODE_DIAGNOS = 0x06
-DRV2605_MODE_AUTOCAL = 0x07
-
-
-DRV2605_REG_RTPIN = 0x02
-DRV2605_REG_LIBRARY = 0x03
-DRV2605_REG_WAVESEQ1 = 0x04
-DRV2605_REG_WAVESEQ2 = 0x05
-DRV2605_REG_WAVESEQ3 = 0x06
-DRV2605_REG_WAVESEQ4 = 0x07
-DRV2605_REG_WAVESEQ5 = 0x08
-DRV2605_REG_WAVESEQ6 = 0x09
-DRV2605_REG_WAVESEQ7 = 0x0A
-DRV2605_REG_WAVESEQ8 = 0x0B
-
-DRV2605_REG_GO = 0x0C
-DRV2605_REG_OVERDRIVE = 0x0D
-DRV2605_REG_SUSTAINPOS = 0x0E
-DRV2605_REG_SUSTAINNEG = 0x0F
-DRV2605_REG_BREAK = 0x10
-DRV2605_REG_AUDIOCTRL = 0x11
-DRV2605_REG_AUDIOLVL = 0x12
-DRV2605_REG_AUDIOMAX = 0x13
-DRV2605_REG_RATEDV = 0x16
-DRV2605_REG_CLAMPV = 0x17
-DRV2605_REG_AUTOCALCOMP = 0x18
-DRV2605_REG_AUTOCALEMP = 0x19
-DRV2605_REG_FEEDBACK = 0x1A
-DRV2605_REG_CONTROL1 = 0x1B
-DRV2605_REG_CONTROL2 = 0x1C
-DRV2605_REG_CONTROL3 = 0x1D
-DRV2605_REG_CONTROL4 = 0x1E
-DRV2605_REG_VBAT = 0x21
-DRV2605_REG_LRARESON = 0x22
-#
-class Adafruit_DRV2605():        
-    
-    def __init__(self):
-        self.effect = 0
-    
-    def begin():
-            
-        # save the device address 
-        id = read_byte_data(DRV2605_ADDR, DRV2605_REG_STATUS)
-        #Serial.print("Status 0x") Serial.println(id, HEX)
-        
-        bus.write_byte_data(DRV2605_ADDR, DRV2605_REG_MODE, 0x00) # out of standby
-        
-        bus.write_byte_data(DRV2605_ADDR, DRV2605_REG_RTPIN, 0x00) # no real-time-playback
-        
-        bus.write_byte_data(DRV2605_ADDR, DRV2605_REG_WAVESEQ1, 1) # strong click
-        bus.write_byte_data(DRV2605_ADDR, DRV2605_REG_WAVESEQ2, 0)
-        
-        bus.write_byte_data(DRV2605_ADDR, DRV2605_REG_OVERDRIVE, 0) # no overdrive
-        
-        bus.write_byte_data(DRV2605_ADDR, DRV2605_REG_SUSTAINPOS, 0)
-        bus.write_byte_data(DRV2605_ADDR, DRV2605_REG_SUSTAINNEG, 0)
-        bus.write_byte_data(DRV2605_ADDR, DRV2605_REG_BREAK, 0)
-        bus.write_byte_data(DRV2605_ADDR, DRV2605_REG_AUDIOMAX, 0x64)
-        
-        # ERM open loop
-        
-        # turn off N_ERM_LRA
-        bus.write_byte_data(DRV2605_ADDR,DRV2605_REG_FEEDBACK, readRegister8(DRV2605_REG_FEEDBACK) & 0x7F)
-        # turn on ERM_OPEN_LOOP
-        bus.write_byte_data(DRV2605_ADDR,DRV2605_REG_CONTROL3, readRegister8(DRV2605_REG_CONTROL3) | 0x20)
-
-        return true
-
-
-    def setWaveform(slot, w):
-        bus.write_byte_data(DRV2605_ADDR, DRV2605_REG_WAVESEQ1+slot, w)
-
-
-    def selectLibrary(lib):
-        bus.write_byte_data(DRV2605_ADDR, DRV2605_REG_LIBRARY, lib)
-
-
-    def go():
-        bus.write_byte_data(DRV2605_ADDR, DRV2605_REG_GO, 1)
-
-
-    def stop():
-        bus.write_byte_data(DRV2605_ADDR, DRV2605_REG_GO, 0)
-
-
-    def setMode(mode):
-        bus.write_byte_data(DRV2605_ADDR, DRV2605_REG_MODE, mode)
-
-
-    def setRealtimeValue(rtp):
-        bus.write_byte_data(DRV2605_ADDR, DRV2605_REG_RTPIN, rtp)
-
-
-    def useERM ():
-            bus.write_byte_data(DRV2605_ADDR,DRV2605_REG_FEEDBACK, readRegister8(DRV2605_REG_FEEDBACK) & 0x7F)
-
-
-    def useLRA():
-            bus.write_byte_data(DRV2605_ADDR,DRV2605_REG_FEEDBACK, readRegister8(DRV2605_REG_FEEDBACK) | 0x80)
-            
-    def playEffect(self, effect):
-        for packet in range (len(effect)):
-            # set the effect to play
-            Adafruit_DRV2605.setWaveform(packet, effect[packet])# play effect
-        
-        # play the effect!
-        Adafruit_DRV2605.go()
-    
-#
-''' End of Haptic Motor Driver Addresses '''
-
-#qrcodeGUI.py
-
-class SET():
-    PV_SIZE=(320,240)
-    NORM_SIZE=(2592,1944)
-    NO_RESIZE=(0,0)
-    PREVIEW_FILE="PREVIEW.gif"
-    TEMP_FILE="PREVIEW.ppm"
-    QR_SIZE=(640,480)
-    READ_QR="zbarimg "
-
-class cameraGUI():
-
-    def __init__(self):
-        
-        self.scan=False
-        self.resultQR =""
-
-    def run_p(cmd):
-
-        proc=subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE)
-        result=""
-        for line in proc.stdout:
-            result=str(line,"utf-8")
-
-        return result
-
-    def camCapture(filename,size=SET.NORM_SIZE):
-        with picam.PiCamera() as camera:
-            camera.resolution = size
-            camera.capture(filename)
-
-    # Use the timestamp 
-    def timestamp():
-        ts=time.time()
-        tstring=datetime.datetime.fromtimestamp(ts)
-        return tstring.strftime("%Y%m%d_%H%M%S")
-
-    def qrGet(self):
-
-        if (self.scan==True):
-
-            self.scan=False
-
-        else:
-
-            self.scan=True
-
-            self.qrScanner()
-
-    def qrScanner(self):
-        # ensures the result is found by setting found to false
-
-        cameraGUI.camCapture(SET.PREVIEW_FILE,SET.QR_SIZE)
-
-        #check for QR code in image
-        qrcode=cameraGUI.run_p(SET.READ_QR+SET.PREVIEW_FILE)
-
-        if len(qrcode)>0:
-
-            self.resultQR = qrcode
-            self.resultQR.rstrip("\n")
-            self.resultQR = self.resultQR.split(":")
-            self.resultQR = self.resultQR[1]
-            self.resultQR = str(self.resultQR).strip("\n")
-            self.scan=False
-
-            found=True
-            
-        else:
-
-            self.resultQR = ""
-
-        return self.resultQR
-
-    def normal(self):
-        name=cameraGUI.timestamp()+".jpg"
-        cameraGUI.camCapture(name,SET.NORM_SIZE)
-
-
-#End
 
 class Graph(object):
     def __init__(self):
@@ -656,10 +222,7 @@ def shortest_path(graph, origin, destination):
    
     return int(visited[destination]*100), list(full_path)
 
-#
-#
-#
-#
+
 class Feedback():   
     
     def __init__(self):
@@ -667,7 +230,6 @@ class Feedback():
         self.graph = {}         # 
         self.direction = {}     # empty dictionary
         self.path = set()  # get the path letters (it should be a list)
-        self.new_path = []
         self.poi_start = ""     # values that hold the nodes in the list value of path 
         self.poi_next = ""      # values that hold the nodes in the list value of path 
         self.poi_last = ""      # values that hold the nodes in the list value of path 
@@ -682,7 +244,7 @@ class Feedback():
         self.room = 0
         self.forward = "forward"
         self.turn = ""
-        self.arrived = "flite -t 'You have arrived at room " + str(self.room) + ".'"
+        arrived = "flite -t 'You have arrived at room " + str(self.room) + ".'"
         self.first_call = False
         self.room = 0     # used for giving the name of the room number (may not be required)
         self.turn_left_tts = 'flite -t "Turn left." '
@@ -699,18 +261,16 @@ class Feedback():
         self.at_destination_tts = 'flite -t "You are standing by your desired destination." '
         self.forward_tts = 'flite -t "You are heading in the correct direction." '
         self.change_dest_detect_tts = 'flite -t "Button push detected. Would you like to change your destination?" '
-        self.update_current_loc_tts = "flite -t 'You are near room " + str(self.room) + ".'"
         self.confrim_change_dest_tts = 'flite -t "Button push detected." '
 
 
     def update_room(self, room):
-        self.arrived_tts = "flite -t 'You have arrived at room " + str(room) + ".'"
-        self.current_dest_tts = "flite -t 'Your current destination is room " + str(room) + ".'"
-        self.get_confirm_dest_tts = "flite -t 'The selected destination is " + str(room) + ". Please confirm.'"
-        self.confirm_dest_tts = "flite -t 'You have selected room " + str(room) + ". Scanning for current position.'"
-        self.start_node = "flite -t 'You are currently standing by room " + str(room) + ". Plotting course.'"
-        self.room_change_tts = "flite -t 'Room " + str(room) + ".'"
-        self.update_current_loc_tts = "flite -t 'You are near room " + str(room) + ".'"
+        self.arrived_tts = "flite -t 'You have arrived at room " + str(self.room) + ".'"
+        self.current_dest_tts = "flite -t 'Your current destination is room " + str(self.room) + ".'"
+        self.get_confirm_dest_tts = "flite -t 'The selected destination is " + str(self.room) + ". Please confirm.'"
+        self.confirm_dest_tts = "flite -t 'You have selected room " + str(self.room) + ". Scanning for current position.'"
+        self.start_node = "flite -t 'You are currently standing by room " + str(self.room) + ". Plotting course.'"
+        self.room_change_tts = "flite -t 'Room " + str(self.room) + ".'"
     
         
     # direct(self)
@@ -720,111 +280,64 @@ class Feedback():
         # initialize variables each time.
         # if they were overwritten outside the function call to turn, it will not alter the behavior
         self.displacement = [0,0]
-        self.ThreeTwoDisp = [0,0]
-        self.TwoOneDisp = [0,0]
-        self.path_index = 0
         self.poi_start = self.new_path[0]
-        self.wrong_way = False
         dispx = 0
         dispy = 0
-        path_length = len(self.prev_path)
-        
-        
-        # Check if destination has been reached
-        if self.poi_start is self.new_path[len(self.new_path)-1]:
-
-            # User has reached their destination
-            self.turn = self.destination
-            return
-
-
-        #   Expecting:
-        #       poi_start to be a node
-        #       prev_path to be a vector of nodes
-        elif self.poi_start not in self.prev_path:
+        path_length = len(self.new_path)
             
-            # you have gone the wrong way
-            self.turn = self.turn_around
+        if path_length >= 2:
+            self.poi_next = self.new_path[1]
+            if path_length > 2:
+                self.poi_last = self.new_path[2]
 
-            # MAY NOT BE REQUIRED
-            self.wrong_way = True
-
-        # If new_path only has one element, user has reached the destination
-        elif len(self.new_path) is 1:
-              
-            # CHECK IF THIS IS THE CASE
-            self.turn = self.destination
-            
+                # check direction
+                if (self.prev_path[1] is not self.poi_start[0]):
+                    if (self.prev_path[0] is not self.poi_start[0]):
+                        # you have gone the wrong way
+                        self.turn = self.turn_around
                         
-        # Otherwise, if the start point exists in the previous path, run some checks
-        elif self.poi_start in self.prev_path:
-
-            # Checks:
-            #       length of previous path,
-            #       compares length of prev_path and new_path
-            if path_length >= 2:
-
-                if self.start_node is not self.prev_path[0]:
-                    # Expecting a node, specifically the next node in the path after poi_start node
-                    self.poi_prev = self.prev_path[self.prev_path.index(self.poi_start)-1]
-
-                    # case where the node exists on the previous path, and the previoius path has at least 3 nodes
-                    if path_length > 2:
-                        
-                        # Expecting a node, specifically the next node in the path after poi_next node
-                        self.poi_last = self.prev_path[self.prev_path.index(self.poi_start)+1]
-
-                        # This if else block check all left/right combo options
-                        # Note: first four checks are for clockwise rotation,
-                        #       next four checks are for counter-clockwise rotations.
-
-                        # start is above prev and last is right of start
-                        if self.graph[self.poi_prev][1] < self.graph[self.poi_start][1] and self.graph[self.poi_last][0] > self.graph[self.poi_start][0]:
-                            self.turn = str(self.right).strip("\n")
-                            
-                        # start is right of prev and last is below start
-                        elif self.graph[self.poi_prev][0] < self.graph[self.poi_start][0] and self.graph[self.poi_last][1] < self.graph[self.poi_start][1]:
-                            self.turn = str(self.right).strip("\n")
-
-                        # start is below prev and last is left of start
-                        elif self.graph[self.poi_prev][1] > self.graph[self.poi_start][1] and self.graph[self.poi_last][0] < self.graph[self.poi_start][0]:
-                            self.turn = str(self.right).strip("\n")
-                            
-                        # start is left of prev and last is above start
-                        elif self.graph[self.poi_prev][0] > self.graph[self.poi_start][0] and self.graph[self.poi_last][0] < self.graph[self.poi_start][0]:
-                            self.turn = str(self.right).strip("\n")
-
-                        # start is right of prev and last is above start
-                        elif self.graph[self.poi_prev][0] < self.graph[self.poi_start][0] and self.graph[self.poi_last][1] > self.graph[self.poi_start][1]:
-                            self.turn = str(self.left).strip("\n")
-
-                        # start is above prev and last is left of start
-                        elif self.graph[self.poi_prev][1] < self.graph[self.poi_start][1] and self.graph[self.poi_last][0] < self.graph[self.poi_start][0]:
-                            self.turn = str(self.left).strip("\n")
-
-                        # start is left of prev and last is below start
-                        elif self.graph[self.poi_prev][0] > self.graph[self.poi_start][0] and self.graph[self.poi_last][1] < self.graph[self.poi_start][1]:
-                            self.turn = str(self.left).strip("\n")
-
-                        # start is below prev and last is right of start
-                        elif self.graph[self.poi_prev][1] > self.graph[self.poi_start][1] and self.graph[self.poi_last][0] > self.graph[self.poi_start][0]:
-                            self.turn = str(self.left).strip("\n")
-
-                        # default turn instruction
-                        else:
+        
+                self.prev_path = self.new_path
+                # from 0 to 1 indluded
+                for index in range(2):
+                    self.displacement[index] = self.graph[(self.poi_next, self.poi_last)][index] - self.graph[(self.poi_start, self.poi_next)][index]
+                    if index == 1:
+                        dispx = self.displacement[index-1]
+                        dispy = self.displacement[index]
+                        if dispx == 0 or dispy == 0:
                             self.turn = self.forward
+                        elif dispx > 0 and dispy > 0:
+                            self.turn = self.left
+                            
+                        elif dispx > 0 and dispy < 0:
+                            self.turn = self.right
+                        elif dispx < 0 and dispy > 0:
+                            self.turn = self.right
+                        elif dispx < 0 and dispy < 0:
+                            self.turn = self.left
 
-                        
-                        # make sure to preserve the prev_path if the new_path is length 2
-                        if len(self.new_path) > 2:
+            # Path has two points: if they are the same, destination has been reached
+            elif path_length == 2:
+                # one case is that you have arrived
+                if self.poi_next == self.poi_start:
+                    self.turn = self.arrived
+                # the other case worth noting is when the second value (i.e.destination)
+                # from the old path is not the same as the destination in the new path
+                elif self.poi_next is not self.prev_path[1]:
+                    self.turn = self.turn_around
+                # the third circumstance is when the user hadn't moved and re-scanned the node
+                else:
+                    self.turn = self.forward
 
-                            # updates path
-                            self.prev_path = self.new_path
+        # there is only one or no values, which should not happen
+        else:
+            if path_length == 1 and self.poi_start == self.prev_path[0]:
+                self.turn = self.arrived
 
+            else:
+                self.turn = self.choose_dest
 
-
-        return
-
+        return self.turn
 
     ## Process Orientation
     #  sets self.turn to give feedback to user based on magnetometer readings
@@ -880,63 +393,96 @@ class Feedback():
     #  @param [in] self The object pointer.
     #  @param [in] ax_under Normalized magnetometer projection onto x-axis
     #  @param [in] ay_under Normalized magnetometer projection onto y-axis
-    def processOrientation(self, ax_under, ay_under):
+    def processOrientation(self, tup_ax_ay_under):
+
+        # variable initialization from passed tuple value of length 3
+        ax_under = 0.0
+        ay_under = 0.0
+        a_length = 0.0
+
+        # for computing the projection of magnetometer reading onto the edge vector
+        b_dot_b = 0.0
+        a_dot_b = 0.0
+        scale_b = 0.0
+        bx_proj = 0.0
+        by_proj = 0.0
+        b_length = 0.0
+        cos_theta = 0.0 
+        
+        ax_under = tup_ax_ay_under[0]
+        ay_under = tup_ax_ay_under[1]
+        a_length = tup_ax_ay_under[2]
+
         # as long as self.new_path has two values, check if feedback is needed
         if (len(self.new_path) > 1):
+            
             # check array to see if values are in self.graph. if not, we're done here
             if (self.new_path[0], self.new_path[1]) in self.graph:
+                
                 # otherswise, assign values to local variables
                 x_val = self.graph[(self.new_path[0], self.new_path[1])][0]
                 y_val = self.graph[(self.new_path[0], self.new_path[1])][1]
 
-                # compare magnet reading to when next node is in positive y-direction
-                if x_val == 0 and y_val > 0:
-                    if ax_under > -0.125 or ax_under < 0.125 and ay_under < 0:
-                        self.turn = self.turn_around
-                    elif ax_under > 0 and ay_under < 0 :
-                        self.turn = self.left
-                    elif ax_under < 0 and ay_under < 0: 
-                        self.turn = self.right
-                    else:
-                        self.turn = self.forward
+                # get the projection of a_under onto val
+                # start with val^2
+                b_dot_b = x_val ** 2 + y_val ** 2
+                # then dot product the mag reading and edge 
+                a_dot_b = ax_under * x_val + ay_under * y_val
+                # divide the dot of two vectors by edge squared
+                scale_b = b_dot_b/a_dot_b
+                # compute x projection
+                bx_proj = scale_b * x_val
+                # compute y projection
+                by_proj = scale_b * y_val
 
-                # compare magnet reading to when next node is in the negative y-direction
-                elif x_val == 0 and y_val < 0:
-                    if ax_under > -0.125 or ax_under < 0.125 and ay_under > 0:
-                        self.turn = self.turn_around
-                    elif ax_under > 0 and ay_under > 0 :
-                        self.turn = self.right
-                    elif ax_under < 0 and ay_under > 0: 
-                        self.turn = self.left
-                    else:
-                        self.turn = self.forward
-                        
-                # compare magnet reading to when next node is in the positive x-direction
-                elif x_val > 0 and y_val == 0:
-                    if ay_under > -0.125 or ay_under < 0.125 and ax_under < 0:
-                        self.turn = self.turn_around
-                    elif ay_under > 0 and ax_under < 0 :
-                        self.turn = self.right
-                    elif ay_under < 0 and ax_under < 0: 
-                        self.turn = self.left
-                    else:
-                        self.turn = self.forward
-                        
-                # compare magnet reading to when next node is in the negative x-direction
-                elif x_val < 0 and y_val == 0:
-                    if ay_under > -0.125 or ay_under < 0.125 and ax_under > 0:
-                        self.turn = self.turn_around
-                    elif ay_under > 0 and ax_under > 0 :
-                        self.turn = self.left
-                    elif ay_under < 0 and ax_under > 0: 
-                        self.turn = self.right
-                    else:
-                        self.turn = self.forward
+                # calculate cos theta between the two vectors, between -1 and 1
+                cos_theta = a_dot_b / (a_length * math.sqrt(b_dot_b))
 
+                print()
+                print("tup_ax_ay_under: ", tup_ax_ay_under)
+                print("value of cos_theta: ", cos_theta)
+                print("x_val, y_val: ", x_val, y_val)
+                print("Value of bx_proj* x_val: ", bx_proj * x_val)
+                print("Value of by_proj* y_val: ", by_proj * y_val)
+                print("a_dot_b: ", a_dot_b)
+                print("b_dot_b: ", b_dot_b)
 
-import smbus
-import time
-import math
+                # If x and y are positive, they are heading in the right direction
+                if bx_proj * x_val >= 0 and by_proj * y_val >= 0:
+
+                    self.turn = self.forward
+
+                # otherwise, find the deviation by angles, as the user is beyond +-90 deg of the correct direction
+                # if they are between cos(-2pi/3) and cos(-pi/3),
+                elif cos_theta < 0.5 and cos_theta > -0.5:
+
+                    # they need to turn around
+                    self.turn = self.turn_around
+
+                # if they are between cos(0) and cos(-pi/3)
+                elif cos_theta <=1 and cos_theta >= 0.5:
+
+                    # They are to the right of where they should be facing, so turn left
+                    self.turn = self.left
+
+                
+                # lastly, if they are between cos(-2pi/3) and cos(pi)
+                elif cos_theta < -0.5 and cos_theta > -1.0:
+
+                    # They are facing the left of where they should, so they should turn right
+                    self.turn = self.right
+
+                # make a default case (although it should never happen)
+                else:
+
+                    # choose default value
+                    self.turn = self.forward
+                
+                # nothing to return
+                return
+
+                
+
 
 
 ## MPU9250 Default I2C slave address
@@ -1530,7 +1076,7 @@ class MPU9250:
     # device orientation -- which can be converted to yaw, pitch, and roll. Useful for stabilizing quadcopters, etc.
     # The performance of the orientation filter is at least as good as conventional Kalman-based filtering algorithms
     # but is much less computationally intensive---it can be performed on a 3.3 V Pro Mini operating at 8 MHz!
-    def MadgwickQuaternionUpdate(ax, ay, az, gx, gy, gz, mx, my, mz):
+    def MadgwickQuaternionUpdate(ax,  ay,  az, gx, gy, gz, mx, my, mz):
         
         q1 = q[0], q2 = q[1], q3 = q[2], q4 = q[3]   # short name local variable for readability
         norm = 0.0
@@ -1624,9 +1170,23 @@ class MPU9250:
   
       # Similar to Madgwick scheme but uses proportional and integral filtering on the error between estimated reference vectors and
       # measured ones.
-    def MahonyQuaternionUpdate(ax,  ay,  az, gx, gy, gz, mx, my, mz):
-    
-        q1 = q[0], q2 = q[1], q3 = q[2], q4 = q[3]   # short name local variable for readability
+    def MahonyQuaternionUpdate(self, acc, gyro, magnet):
+
+        ax = acc[0]
+        ay = acc[1]
+        az = acc[2]
+        gx = gyro[0]
+        gy = gyro[1]
+        gz = gyro[2]
+        mx = magnet[0]
+        my = magnet[1]
+        mz = magnet[2]
+
+        
+        q1 = q[0]
+        q2 = q[1]
+        q3 = q[2]
+        q4 = q[3]   # short name local variable for readability
         norm = 0.0
         hx, hy, bx, bz = (0.0, 0.0, 0.0, 0.0)
         vx, vy, vz, wx, wy, wz = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
@@ -1711,6 +1271,8 @@ class MPU9250:
         q[1] = q2 * norm
         q[2] = q3 * norm
         q[3] = q4 * norm
+
+        return hx, hy
   
     # Read IMU
     # Returns averages of samples over a 5-second interval, 
@@ -1724,7 +1286,7 @@ class MPU9250:
     # @param [in] getMagnitude (boolean)
     # @param [in] getVelocity (boolean)
     # @retval averageReadings (float), total_sample_time (int), magMag (float), speed (float)
-    def readIMU(self, readAcc, readGyro, readMag, getMagnitude, getVelocity):
+    def readIMU(self, rdAcc, rdGyro, rdMag, getMagnitude, getVelocity):
         
         #Select proper delay time for reading data based on sensor settings. Double delay to increase data reliability
         sample_delay = 2/(self.gres*32760)      # Long wait to ensure more accurate data 
@@ -1735,13 +1297,13 @@ class MPU9250:
         readTemp=False
 
         # someone called the function without passing any values 
-        if readAcc is False and readGyro is False and readMag is False:
+        if rdAcc is False and rdGyro is False and rdMag is False:
             readTemp = True
 
-        elif readMag is True:                
+        elif rdMag is True:                
             # set gyro and acc as nested for loop, assuming count starts at 0 and goes to 19 (20 total readings). Time so by the ith reading, the mag is ready
             for QUICK_READ_ALL in range (20):
-                if readAcc is True or readGyro is True:
+                if rdAcc is True or rdGyro is True:
                     #Starting at 1 and going to 40 (40 readings)
                     for ACC_GYRO in range (int(acc_gyro_samples)):
                         if readAcc is True:    
@@ -1758,25 +1320,29 @@ class MPU9250:
                         
                         time.sleep(sample_delay) # 200Hz sample rate from SMPLRT_DIV, 0x04 line
                     # set as parent loop, as it is slower. wait for the time required fo gyro/acc to stabilize
+                    
+                else:
+                    time.sleep(sample_delay) # 200Hz sample rate from SMPLRT_DIV, 0x04 line
+                    
                 mag = MPU9250.readMagnet(self)
                 averageReadings[6] = averageReadings[6] + mag[0]
                 averageReadings[7] = averageReadings[7] + mag[1]
                 averageReadings[8] = averageReadings[8] + mag[2]
             
-        elif readMag is False:
+        elif rdMag is False:
             #Starting at 1 and going to 40 (40 readings)
-            for ACC_GYRO in range (acc_gyro_samples):
-                if readAcc is True:    
-                    accel = mpu9250.readAccel()
-                    averageReadings[0] = averageReadings[0] + self.accel[0]
-                    averageReadings[1] = averageReadings[1] + self.accel[1]
-                    averageReadings[2] = averageReadings[2] + self.accel[2]
+            for ACC_GYRO in range (int(acc_gyro_samples)):
+                if rdAcc is True:    
+                    accel = self.readAccel()
+                    averageReadings[0] = averageReadings[0] + accel[0]
+                    averageReadings[1] = averageReadings[1] + accel[1]
+                    averageReadings[2] = averageReadings[2] + accel[2]
 
-                if readGryo is True:
-                    gyro = mpu9250.readGyro()
-                    averageReadings[3] = averageReadings[3] + self.gyro[0]
-                    averageReadings[4] = averageReadings[4] + self.gyro[1]
-                    averageReadings[5] = averageReadings[5] + self.gyro[2]
+                if rdGyro is True:
+                    gyro = self.readGyro()
+                    averageReadings[3] = averageReadings[3] + gyro[0]
+                    averageReadings[4] = averageReadings[4] + gyro[1]
+                    averageReadings[5] = averageReadings[5] + gyro[2]
                 
                 time.sleep(sample_delay) # 200Hz sample rate from SMPLRT_DIV, 0x04 line
 
@@ -1806,8 +1372,14 @@ class MPU9250:
         speed = total_sample_time * math.sqrt(averageReadings[0] ** 2 + averageReadings[1] ** 2 + averageReadings[2] ** 2)
         
         # ToDo: Change dict key-value pair (mimics c switch statment)
-        if readAcc is False and readGyro is False and readMag is False:
+        if rdAcc is False and rdGyro is False and rdMag is False:
             return 0
+
+        # only read the magnetometer
+        elif rdMag is True and rdGyro is False and rdAcc is False:
+            # only return the magnetometer values
+            return averageReadings[6:9]
+            
         
         elif getMagnitude == False and getVelocity == False:
             # Only return the average readings and total sample time
@@ -1833,10 +1405,13 @@ class MPU9250:
     # @retval Value [a]_B (int 16bit)
     def changeOfBasis(self, x1UnderB, x2UnderB, userUnderB):
 
+        print("userUnderB: ", userUnderB)
         # Copy the contents ofthe vectors
         self.v1 = x1UnderB.copy()
         self.v2 = x2UnderB.copy()
-        self.b = userUnderB.copy()
+
+        # Expecting a list of lists, where first three entries are desired
+        self.b = list(userUnderB).copy()
 
         # divide first row by first value in first row
         self.v2[0] = self.v2[0]/self.v1[0]
@@ -1857,15 +1432,27 @@ class MPU9250:
         # return the x and y values. These are the user's coordinates on the grid
         return self.b[0], self.b[1]
 
-    def normalizeProjection(self, xlen, ylen):
-        self.length = 0.0       
+    def normalizeProjection(self, tup_x_y):
+
+        # keeps x, y, r, and theta at indices 0, 1, 2, and 3, respectively
+        norm_xy_and_r_theta = [0.0,0.0,0.0]
+        tup_x_y = list(tup_x_y)
+        
+        norm_xy_and_r_theta[0] = tup_x_y[0]
+        norm_xy_and_r_theta[1] = tup_x_y[1]
+        
+        # Distance. Note tup_x_y[0] is x and tup_x_y[1] is y
+        norm_xy_and_r_theta[2] = math.sqrt(norm_xy_and_r_theta[0]**2 + norm_xy_and_r_theta[1]**2)
         
         # normalize the values by dividing components by the length of the 
-        length = math.sqrt(xlen**2 + ylen**2)
-        xlen = xlen / length
-        ylen = ylen / length
+        if norm_xy_and_r_theta[2] != 0 :
+            norm_xy_and_r_theta[0] = norm_xy_and_r_theta[0] / norm_xy_and_r_theta[2]    # Assign x
+            norm_xy_and_r_theta[1] = norm_xy_and_r_theta[1] / norm_xy_and_r_theta[2]    # Assign y
 
-        return xlen, ylen
+        # now that x and y are normalized, check value by re-computing the length. Should be 1
+        norm_xy_and_r_theta[2] = math.sqrt(norm_xy_and_r_theta[0]**2 + norm_xy_and_r_theta[1]**2)
+        
+        return norm_xy_and_r_theta
 
     # getAngles()
     # @param [in] self The object pointer.
@@ -1923,421 +1510,184 @@ class MPU9250:
             # If no instantaneous data is required, return.
             return
 
-# This program implements the above classe to help navigate the visually impaired
-while True:
+
    
-    # ToDo: setup threads. Four cores, four threads
-    # ToDo: check on initialized variables in while loops if they are global or localwhile 
-    # Core 1: QR code scan
-    # Core 2: Shortest Path
-    # Core 3: Feedback
-    # Core 4: talk to text/ text to talk
-    ## setup class variables
-    input = Input()
-    camera = cameraGUI()
-    graph = Graph()
-    imu = MPU9250()
-    haptic = Adafruit_DRV2605()
-    feedback = Feedback()
-    
-    ## 'Global' variables
-    ## check if these are used
- 
-    turn_left = False          # Used for feedack from either/ both grid results and current
-    turn_right = False         #
-    turn_around = False        #
-    distance_update = False    #
-    dist_remain = 0             # distance until destination or corne    
-    
-    ## These variables are used
-    distance = 0.0              # used to return distance value from calls to shortest path
-    dist_rem = distance         #
-    path = {}                   # default dictionary
-    qr_code = ""                # rerived QR code from pi cam scan
-    end_node = ""               # end of path
-    current_node = ""           # state == 1 requires this to start scanning from the camera
-    select_dest = False         # informs the program when destination has been selected    
-    button_state  = False       # used for confirming button pushes
-    state = 0                   # Keeps track of the current state the program exists in 
-    destination = 0             # a room number
-    counter = 0               # generic counter used in all states for feedback after specific iterations through a loop
-    max_counter = 1000000              # maximum count @Param:counter reaches
-    
-    ## Magnetometer Variables
-    getMag = True
-    getAcc = True
-    getGyro = True
-    magnitudeMagnetometer = True
-    speed = True
+# ToDo: setup threads. Four cores, four threads
+# ToDo: check on initialized variables in while loops if they are global or localwhile 
+# Core 1: QR code scan
+# Core 2: Shortest Path
+# Core 3: Feedback
+# Core 4: talk to text/ text to talk
+## setup class variables
+graph = Graph()
+imu = MPU9250()
+feedback = Feedback()
 
-    noMag = False
-    noAcc = False
-    noGyro = False
-    noMagMag = False
-    noSpeed = False
-    
-    ave_sample_time = 0.0                                        # sample time of the last reading from the IMU
-    ave_readings = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]    # stores last readings of IMU
-    A_x = [-3.5191, 32.6908, 55.998]                    # grid's mag reading in the +x-direction
-    A_y = [-5.1537, 8.24405, 55.108]                    # grid's mag reading in the +y-direction
-    ax_under_b = 0.0
-    ay_under_b = 0.0
+## 'Global' variables
+## check if these are used
+
+turn_left = False          # Used for feedack from either/ both grid results and current
+turn_right = False         #
+turn_around = False        #
+distance_update = False    #
+dist_remain = 0             # distance until destination or corne    
+
+## These variables are used
+distance = 0.0              # used to return distance value from calls to shortest path
+dist_rem = distance         #
+path = {}                   # default dictionary
+qr_code = ""                # rerived QR code from pi cam scan
+end_node = ""               # end of path
+current_node = ""           # state == 1 requires this to start scanning from the camera
+select_dest = False         # informs the program when destination has been selected    
+button_state  = False       # used for confirming button pushes
+state = 0                   # Keeps track of the current state the program exists in 
+destination = 0             # a room number
+counter = 0               # generic counter used in all states for feedback after specific iterations through a loop
+max_counter = 1000000              # maximum count @Param:counter reaches
+
+feedback = Feedback()
+
+ave_sample_time = 0.0                                        # sample time of the last reading from the IMU
+ave_readings = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]    # stores last readings of IMU
+A_x = [0.5858473743981879, 0.0, 0.8104214051410226]                    # grid's mag reading in the +x-direction
+A_y = [0.785589795164617, 0.0, 0.6187476656385988]                    # grid's mag reading in the +y-direction
+ax_under_b = 0.0
+ay_under_b = 0.0
+
+# test orthogonality
+orthog = A_x[0]*A_y[0] + A_x[1]*A_y[1] + A_x[2]*A_y[2]
+if orthog < 1e-10:
+    print("Vectors A_x and A_y are orthogonal.")
+else:
+    print("Not orthogonal")
+
+## Magnetometer Variables
+getMag = True
+getAcc = True
+getGyro = True
+magnitudeMagnetometer = True
+speed = True
+
+noMag = False
+noAcc = False
+noGyro = False
+noMagMag = False
+noSpeed = False
+
+# used for labeling nodes
+for node in ['A', 'B', 'C', 'D', 'E', 'F', 'G','H', 'I', 'J', 'K',
+             'L', 'M','N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V']:
+
+    graph.add_node(node)
+
+# used for selecting destination
+graph.rooms = OrderedDict(sorted({'A':[340, 341, 342, 343], 'B':[344,345,346,347], 'C':[348,349,350,351], 
+            'D':[353], 'E':[355], 'F':[357], 'G':[359],'H':[361], 'I':[363], 'J':[365], 'K':[367],
+            'L':[369], 'M':[371],'N':[373], 'O':[375], 'P':[377], 'Q':[379], 'R':[381], 'S':[383], 'T':[385]}.items()))
+
+graph.node_cart_coord = OrderedDict(sorted({'A':[0,0], 'B':[0,21], 'C':[0,49], 'D':[0,161], 'E':[0,201], 
+            'F':[39,201], 'G':[73,201],'H':[100,201], 'I':[145,201], 'J':[183,201],
+            'K':[183,161], 'L':[183,100], 'M':[183,49],'N':[183,21], 'O':[183,0],
+            'P':[163,0], 'Q':[133,0], 'R':[100,0], 'S':[80,0], 'T':[65,0]}.items()))
 
 
 
+graph.add_edge('T', 'A', -65, 0)
+graph.add_edge('A', 'B', 0, 21)
+graph.add_edge('B', 'C', 0, 28)  #30 across, going up.
+graph.add_edge('C', 'D', 0, 112)
+graph.add_edge('D', 'E', 0, 40)
 
-    # used for labeling nodes
-    for node in ['A', 'B', 'C', 'D', 'E', 'F', 'G','H', 'I', 'J', 'K',
-                 'L', 'M','N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V']:
-
-        graph.add_node(node)
-
-    # used for selecting destination
-    graph.rooms = OrderedDict(sorted({'A':[340, 341, 342, 343], 'B':[344,345,346,347], 'C':[348,349,350,351], 
-                'D':[353], 'E':[355], 'F':[357], 'G':[359],'H':[361], 'I':[363], 'J':[365], 'K':[367],
-                'L':[369], 'M':[371],'N':[373], 'O':[375], 'P':[377], 'Q':[379], 'R':[381], 'S':[383], 'T':[385]}.items()))
-
-    graph.node_cart_coord = OrderedDict(sorted({'A':[0,0], 'B':[0,21], 'C':[0,49], 'D':[0,161], 'E':[0,201], 
-                'F':[39,201], 'G':[73,201],'H':[100,201], 'I':[145,201], 'J':[183,201],
-                'K':[183,161], 'L':[183,100], 'M':[183,49],'N':[183,21], 'O':[183,0],
-                'P':[163,0], 'Q':[133,0], 'R':[100,0], 'S':[80,0], 'T':[65,0]}.items()))
-
-
-
-    graph.add_edge('T', 'A', -65, 0)
-    graph.add_edge('A', 'B', 0, 21)
-    graph.add_edge('B', 'C', 0, 28)  #30 across, going up.
-    graph.add_edge('C', 'D', 0, 112)
-    graph.add_edge('D', 'E', 0, 40)
-
-    graph.add_edge('A', 'T', 65, 0)
-    graph.add_edge('B', 'A', 0, -21)
-    graph.add_edge('C', 'B', 0, -28) # going down
-    graph.add_edge('D', 'C', 0, -112)
-    graph.add_edge('E', 'D', 0, -40)
+graph.add_edge('A', 'T', 65, 0)
+graph.add_edge('B', 'A', 0, -21)
+graph.add_edge('C', 'B', 0, -28) # going down
+graph.add_edge('D', 'C', 0, -112)
+graph.add_edge('E', 'D', 0, -40)
 
 # room E to J
-    graph.add_edge('E', 'F', 39, 0)
-    graph.add_edge('F', 'G', 34, 0)
-    graph.add_edge('G', 'H', 27, 0)  #30 across, ->
-    graph.add_edge('H', 'I', 45, 0) 
-    graph.add_edge('I', 'J', 38, 0)
+graph.add_edge('E', 'F', 39, 0)
+graph.add_edge('F', 'G', 34, 0)
+graph.add_edge('G', 'H', 27, 0)  #30 across, ->
+graph.add_edge('H', 'I', 45, 0) 
+graph.add_edge('I', 'J', 38, 0)
 
-    graph.add_edge('F', 'E', -39, 0)
-    graph.add_edge('G', 'F', -34, 0)
-    graph.add_edge('H', 'G', -27, 0)  #<--Direction
-    graph.add_edge('I', 'H', -45, 0)
-    graph.add_edge('J', 'I', -38, 0)
+graph.add_edge('F', 'E', -39, 0)
+graph.add_edge('G', 'F', -34, 0)
+graph.add_edge('H', 'G', -27, 0)  #<--Direction
+graph.add_edge('I', 'H', -45, 0)
+graph.add_edge('J', 'I', -38, 0)
 
-    # rooms J to P
+# rooms J to P
 
-    graph.add_edge('J', 'K', 0, -40)
-    graph.add_edge('K', 'L', 0, -61)
-    graph.add_edge('L', 'M', 0, -51)
-    graph.add_edge('M', 'N', 0, -28)  #30 across, direction going down
-    graph.add_edge('N', 'O', 0, -21)
+graph.add_edge('J', 'K', 0, -40)
+graph.add_edge('K', 'L', 0, -61)
+graph.add_edge('L', 'M', 0, -51)
+graph.add_edge('M', 'N', 0, -28)  #30 across, direction going down
+graph.add_edge('N', 'O', 0, -21)
 
-    graph.add_edge('K', 'J', 0, 40)
-    graph.add_edge('L', 'K', 0, 61)
-    graph.add_edge('M', 'L', 0, 51)
-    graph.add_edge('N', 'M', 0, 28)  #30 across, direction going UP
-    graph.add_edge('O', 'N', 0, 21)
+graph.add_edge('K', 'J', 0, 40)
+graph.add_edge('L', 'K', 0, 61)
+graph.add_edge('M', 'L', 0, 51)
+graph.add_edge('N', 'M', 0, 28)  #30 across, direction going UP
+graph.add_edge('O', 'N', 0, 21)
 
-    #rooms O to t
+#rooms O to t
 
-    graph.add_edge('O', 'P', -20, 0)
-    graph.add_edge('P', 'Q', -30, 0)
-    graph.add_edge('Q', 'R', -33, 0)  #30 ACROSS  <<--
-    graph.add_edge('R', 'S', -20, 0)
-    graph.add_edge('S', 'T', -15, 0)
+graph.add_edge('O', 'P', -20, 0)
+graph.add_edge('P', 'Q', -30, 0)
+graph.add_edge('Q', 'R', -33, 0)  #30 ACROSS  <<--
+graph.add_edge('R', 'S', -20, 0)
+graph.add_edge('S', 'T', -15, 0)
 
-    graph.add_edge('P', 'O', 20, 0)
-    graph.add_edge('Q', 'P', 30, 0)
-    graph.add_edge('R', 'Q', 33, 0)  #30 ACROSS  ->>
-    graph.add_edge('S', 'R', 20, 0)
-    graph.add_edge('T', 'S', 15, 0)
-
-    
-    # start at an arbitrary room in the nodes dictionary stored in graph
-    destination = 340
-
-    # used for directional feedback
-    feedback.graph = graph.node_cart_coord
-
-    # start the state machine
-    state = 1
-
-    # This state scans for initial input for a reference point on the grid
-    while state  == 1:
-        # reset select_dest
-        select_dest = False
-        
-        # ensure button timer (used in state == 2) is reset
-        btn_timer = 0
-
-        # Note that graph has end_node saved as the local variable end
-        end_node = graph.get_dest(destination)
-        feedback.update_room(destination)
-        
-        # notify the user with tts instructions
-        os.system(feedback.select_room_tts)
-        os.system(feedback.current_dest_tts)
-        
-        ## READ FOR DESTINATION SELECTION
-        while select_dest == False:
-            if counter > max_counter:
-                counter = 0
-                os.system(feedback.current_dest_tts)
-                os.system(feedback.select_room_tts)
-            
-            
-            # scan push button pins for user-input.
-            if GPIO.input(select_next):
-                if input.debounce(select_next) == True:
-                    destination = graph.next_room(end_node, destination)
-                    feedback.update_room(destination)
-                    os.system(feedback.room_change_tts)
-                    end_node = graph.get_dest(destination)
-                    feedback.room = destination
-                    counter = 0
-                    
-            #   call text to talk function, passing the value of current node
-            if GPIO.input(select_prev):
-                # debounce
-                if input.debounce(select_prev) == True:
-                    destination = graph.prev_room(end_node, destination)
-                    feedback.update_room(destination)
-                    os.system(feedback.room_change_tts)
-                    end_node = graph.get_dest(feedback.room)
-                    feedback.room = destination
-                    counter = 0
-                    
-            #   call text to talk, passing current_node 
-            if GPIO.input(select_current):   
-                # confirm button hit, debouce
-                if input.debounce(select_current) == True:
-                    # Get confirmation
-                    os.system(feedback.get_confirm_dest_tts)
-                    confirm = True
-                    while confirm == True:
-                        # if too much time has elapsed without user input, remind them of the activity
-                        if counter > max_counter:
-                            # reset counter
-                            counter = 0
-                            #notify user of the current activity
-                            os.system(feedback.get_confirm_dest_tts)
-
-                        # selection confirmed, now debounce
-                        if GPIO.input(select_current):   
-                            # confirm button hit, debouce
-                            if input.debounce(select_current) == True:    
-                                # notify user of selection    
-                                ## ToDo: change this so that when users re-enter state == 1 
-                                ## (i.e. current_node is not ""), that the current position is 
-                                ## loaded
-                                os.system(feedback.confirm_dest_tts)                
-                                
-                                # Save the last node for comparing scanned qr_codes
-                                # Note that graph has end_node saved as the local variable end
-                                end_node = graph.get_dest(destination)
-                                feedback.update_room(destination)
-                                
-                                # exit while loop
-                                confirm = False
-                                select_dest = True
-                                #reset counter
-                                counter = 0
-                                # go to the next state if the program has progressed outside of
-                                # the inner while loop
-                                state = 2 
-                        
-                        # User wants to change selection
-                        if GPIO.input(select_next):
-                            # debounce
-                            if input.debounce(select_next) == True:
-                                # notify user of new activity                                   
-                                os.system(feedback.select_room_tts)
-                                confirm = False
-                                counter = 0
-                                
-                        # User wants to change selection
-                        if GPIO.input(select_prev):
-                            # debounce
-                            if input.debounce(select_prev) == True:
-                                # notify user of new activity
-                                os.system(feedback.select_room_tts)
-                                confirm = False
-                                counter = 0
-                                
-                        # no selection has been made, so increase timer
-                        counter += 1
-                        
-            # no selection has been made, so increase timer
-            counter += 1
-                        
-        
-    # state ==  2
-    # get start node
-    # return to state == 1 if:
-    #   qr_code == destination
-    # proceed to state == 3 if:
-    #   qr_code is in graph.node and not destination
-    while state == 2:
-        # scan for a QR code
-        camera.qrGet()                  # camera.qrGet() returns a string
-
-        # if this qr_code has a value, a qr_code was scanned
-        # also check if the qr_code belongs to a value on the grid
-        #
-        # ToDO: Figure out why this check is not working:
-        # if camera.resultQR in graph.rooms.keys():
-        #
-        # Once this is debugged, add the condition as a second argument in the if statement below
-        if (camera.resultQR is not "") and camera.resultQR in graph.nodes:
-            qr_code = camera.resultQR
-            # expected values
-            if qr_code is not end_node:
-                
-                #might need to check if the qr_code is the same as destination, but I think that shortest_path already does this
-                distance, feedback.new_path = shortest_path(graph, qr_code, end_node)
-                
-                feedback.prev_path = feedback.new_path  # only do this without processing the new_path first in state 2
-
-                # get the starting node and save it to feedback.room in order to
-                feedback.update_room(graph.get_room(feedback.new_path[0]))
-                
-                # tell the user where they are starting
-                os.system(feedback.start_node)
-                
-                # get user's orientation to the grid from magnetometer
-                ave_readings, ave_sample_time = imu.readIMU(noAcc, noGyro, getMag, noMagMag, noSpeed)
-                
-                # set user in correct direction using readings and image matrix
-                # steps done below: change basis projection, normalize result, and set Feedback.self to some direction
-                x_orientaion, y_orientation = imu.changeOfBasis(A_x, A_y, ave_readings[6:9])
-                x_len, y_len = imu.normalizeProjection(x_orientaion, y_orientation)
-                feedback.processOrientation(x_len, y_len)
-                feedback.direct_tts()
-                #feedback.processOrientation(imu.normalizeProjection(imu.changeOfBasis(A_x, A_y, ave_readings[6:9])))
-                
-
-                
-                # provide tts feedback
-                if feedback.turn == feedback.forward:
-                    os.system(feedback.forward_tts)
-                else:
-                    feedback.process_turn()
-                    
-                # followed by haptic feedback
-                feedback.direct_tts()
-                
-                # State changes only when qr is different from destination is state equal to 2
-                state = 3
-                
-            # next check if qr_code is the destination
-            elif camera.resultQR is end_node:
-                
-                # make call to ask for user-input destination, as scanned module is already the current module
-                # ToDo: make call to text to talk (user has arrived at destination)
-                os.system(feedback.location_found_tts)
-                os.system(feedback.at_destination_tts)
-                state = 1
-                
-            # default is an unexpected value, so break and it will re-scan for qr code
-            else:
-                
-                # keep scanning for QR codes
-                qr_code = ""
-
-        # user somehow scanned a junk QR code.
-        else:
-            qr_code = ""
-            
-        # check if user manually interrupts to change destination
-        if GPIO.input(select_next) or GPIO.input(select_prev) or GPIO.input(select_current):
-            
-            # read all input pins "efficiently"            
-            # user has pushed a button
-            if input.deb_mult([select_next, select_prev, select_current]) == True:
-                # ToDo: get confirmation on destiantion change request
-
-                # tell user what's up
-                os.system(feedback.confrim_change_dest_tts)
-                
-                # allow the user to reselect input
-                state = 1
-
-    # state == 3
-    # this state is actively providing feedback while scanning for new input
-    #  feedbaack consists of reading IMU
-    # providing haptic feedback
-    # once destination == current_node (origin), got to state 3
-    while state == 3:
-        x_orientaion, y_orientation = imu.changeOfBasis(A_x, A_y, ave_readings[6:9])
-        x_len, y_len = imu.normalizeProjection(x_orientaion, y_orientation)
-        feedback.processOrientation(x_len, y_len)
-        feedback.process_turn()
-        feedback.direct_tts()
-        # if so, send haptic signal
-        haptic.playEffect(feedback.effect)
-        
-        # scan for a QR code
-        camera.qrGet()                  # camera.qrGet() returns a string
-
-        # if this qr_code has a value, a qr_code was scanned
-        # also check if the qr_code belongs to a value on the grid
-        if (camera.resultQR is not "") and (camera.resultQR in graph.nodes):
-            qr_code = camera.resultQR
-
-            if qr_code == end_node:
-
-                feedback.update_room(destination)
-                os.system(feedback.arrived_tts)
-
-                state = 1
-                
-            else:
-                # create a new path using the scanned QR-code
-                distance, feedback.new_path = shortest_path(graph, qr_code, end_node)
-                
-                # find the direction to turn or the next command
-                feedback.direct()
-
-                # update user by nearby room number
-                feedback.update_room(graph.rooms[qr_code][0])
-                os.system(feedback.update_current_loc_tts)
-
-                # see if user needs to turn
-                feedback.process_turn()
-                # if so, send haptic signal
-                haptic.playEffect(feedback.effect)
-                # and tell them
-                feedback.direct_tts()
-                
-                
-                # save new_path
-                #feedback.prev_path = feedback.new_path
-                
-                # keep scanning for QR codes
-                qr_code = ""
-
-        # user somehow scanned a junk QR code.
-        else:
-            camera.resultQR = ""
-           
-            
-        # check if user manually interrupts to change destination
-        if GPIO.input(select_next) or GPIO.input(select_prev) or GPIO.input(select_current):
-            
-            # read all input pins "efficiently"            
-            # user has pushed a button
-            if input.deb_mult([select_next, select_prev, select_current]) == True:
-                # ToDo: get confirmation on destiantion change request
-
-                # tell user what's up
-                os.system(feedback.confrim_change_dest_tts)               
-                # allow the usere to reselect input
-                state = 1
+graph.add_edge('P', 'O', 20, 0)
+graph.add_edge('Q', 'P', 30, 0)
+graph.add_edge('R', 'Q', 33, 0)  #30 ACROSS  ->>
+graph.add_edge('S', 'R', 20, 0)
+graph.add_edge('T', 'S', 15, 0)
 
 
- 
+# start at an arbitrary room in the nodes dictionary stored in graph
+destination = 340
+
+# used for directional feedback
+feedback.graph = graph.node_cart_coord
+
+# start the state machine
+state = 1
+
+qr_code = 'D'
+end_node = 'A'
+
+wx = 0.0
+wy = 0.0
+wz = 0.0
+a = ()
+
+#might need to check if the qr_code is the same as destination, but I think that shortest_path already does this
+distance, feedback.new_path = shortest_path(graph, qr_code, end_node)
+
+feedback.prev_path = feedback.new_path  # only do this without processing the new_path first in state 2
+
+# get the starting node and save it to feedback.room in order to
+feedback.update_room(graph.get_room(feedback.new_path[0]))
+
+print(feedback.new_path)
+
+# used for directional feedback
+feedback.graph = graph.vertices_2D
+while True:
+
+##    print(list(imu.readMagnet()))
+    print(imu.readAccel())
+    print(imu.readGyro())
+    print(imu.readMagnet())
+    time.sleep(0.1)
+    a =  imu.MahonyQuaternionUpdate(imu.readAccel(), imu.readGyro(), imu.readMagnet())
+    print(a)
+#    feedback.processOrientation(imu.normalizeProjection(imu.changeOfBasis(A_x, A_y, imu.readMagnet())))
+#    feedback.processOrientation(imu.normalizeProjection(imu.MahonyQuaternionUpdate(imu.readAcc(), imu.readGyro(), imu.readMagnet())
+#    feedback.process_turn()
+#    feedback.direct_tts()
+    print()
+    print("feedback: ", feedback.turn)
