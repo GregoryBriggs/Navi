@@ -35,14 +35,14 @@ GPIO.setup(select_current, GPIO.IN)
 class Input():
     
     def __init__(self):
-        self.max_count = 50
+        self.max_count = 1000
 
 
     def debounce(self, gpio_pin):
         counter = 0
         button_state = False
         
-        for count_on in range(100):
+        for count_on in range(1000):
             if GPIO.input(gpio_pin):
                 counter += 1
 
@@ -51,16 +51,23 @@ class Input():
 
         return button_state
     
-    def deb_mult(slef, pins):
+    def deb_mult(self, pins):
         counter = 0
         button_state = False
+        button = 0
         
-        for count_on in range(100):
-            for length in range(len(pins)):
-                if GPIO.input(pins(length)):
-                    counter += 1
+        for count_on in range(1000):
+            if len(pins) > 0:
+                for length in range(len(pins)):
+                    if GPIO.input(pins[length]):
+                        button = pins[length]
+                        counter += 1
+          #  else:
+                # oops! what to do?
+  
+                    
 
-        if counter >= self.max_count and GPIO.input(gpio_pin):
+        if counter >= self.max_count and GPIO.input(pins[button]):
             button_state = True
 
         return button_state
@@ -412,65 +419,29 @@ class cameraGUI():
             self.qrScanner()
 
     def qrScanner(self):
-	
         # ensures the result is found by setting found to false
-        found=False
-		
-        while self.scan == True:
-            cameraGUI.camCapture(SET.PREVIEW_FILE,SET.QR_SIZE)
+
+        cameraGUI.camCapture(SET.PREVIEW_FILE,SET.QR_SIZE)
 
         #check for QR code in image
         qrcode=cameraGUI.run_p(SET.READ_QR+SET.PREVIEW_FILE)
 
         if len(qrcode)>0:
-            # delete this line after removing the line that adds the string "QR-Code"
-            qrcode=qrcode
-            qrcode=qrcode.strip("QR-Code:").strip('\n')
-            self.resultQR.set(qrcode)
+
+            self.resultQR = qrcode
+            self.resultQR.rstrip("\n")
+            self.resultQR = self.resultQR.split(":")
+            self.resultQR = self.resultQR[1]
+            self.resultQR = str(self.resultQR).strip("\n")
             self.scan=False
 
             found=True
             
         else:
+
             self.resultQR = ""
-			return self.resultQR
-		
-        if self.qrRead.get() == 1:
-            cameraGUI.run("sudo flite -t '"+qrcode+"'")
 
-        if self.qrStream.get() == 1:
-            cameraGUI.run("omxplayer '"+qrcode+"'")
-
-        if self.qrRead.get() == 0 and self.qrStream.get() == 0:
-            TK.messagebox.showinfo("QR Code",self.resultQR.get())
-            self.resultQR.set("")
-
-        if found:
-
-            self.qrAction(qrcode)
-
-        self.update()
-
-    def qrAction(self,qrcode):
-        self.resultQR = ""
-        self.resultQR.set("")
-
-        if found:
-            self.resultQR.set("")
-
-        if found:
-
-            self.qrAction(qrcode)
-
-        self.update()
-
-    def qrAction(self,qrcode):
-		self.qrAction(qrcode)
-        self.update()
-
-    def msg(self,text):
-        self.filename.set(text)
-        self.update()
+        return self.resultQR
 
     def normal(self):
         name=cameraGUI.timestamp()+".jpg"
@@ -619,24 +590,26 @@ class Graph(object):
         return self.rooms[prev_node][len(self.rooms[prev_node])-1]        
 
 def SNIPE(graph, initial):
+
     visited = {initial: 0}
     path = {}
 
-    nodes = set(graph.nodes)
+    nodes = set(graph.edges)
 
     while nodes:
         min_node = None
         for node in nodes:
-            if node in visited:
+            if node in visited.keys():
                 if min_node is None:
                     min_node = node
                 elif visited[node] < visited[min_node]:
                     min_node = node
         if min_node is None:
-            break
+           break
 
         nodes.remove(min_node)
         current_weight = visited[min_node]
+
 
         for edge in graph.edges[min_node]:
             try:
@@ -650,7 +623,7 @@ def SNIPE(graph, initial):
             if edge not in visited or weight < visited[edge]:
                 visited[edge] = weight
                 path[edge] = min_node
-
+                
     return visited, path
 
 
@@ -659,16 +632,18 @@ def SNIPE(graph, initial):
 # type graph, char, char
 # returns distance and path in single dict
 def shortest_path(graph, origin, destination):
-    # 
+
+
     visited, paths = SNIPE(graph, origin)   #
     full_path = deque()                     # empty deque, or a structure with streamlined append functions
-    _destination = paths[destination]       # assign the destination to the path
+    _destination = paths.get(destination)       # assign the destination to the path
 
-    # reconstructs the path 
-    while _destination != origin:
-        # 
+
+    # reconstructs the path
+    while _destination is not origin:
+        #
         full_path.appendleft(_destination)
-        _destination = paths[_destination]
+        _destination = paths.get(_destination)
 
     # _destination == origin, so used saved passed variable destination. 
     full_path.appendleft(origin)
@@ -676,8 +651,13 @@ def shortest_path(graph, origin, destination):
 
     # returns dict with one entry, a magnitde of destination and a list of path nodes
     # note that destination is in centimeters or 1/100'
+   
     return int(visited[destination]*100), list(full_path)
 
+#
+#
+#
+#
 class Feedback():   
     
     def __init__(self):
@@ -685,6 +665,7 @@ class Feedback():
         self.graph = {}         # 
         self.direction = {}     # empty dictionary
         self.path = set()  # get the path letters (it should be a list)
+        self.new_path = []
         self.poi_start = ""     # values that hold the nodes in the list value of path 
         self.poi_next = ""      # values that hold the nodes in the list value of path 
         self.poi_last = ""      # values that hold the nodes in the list value of path 
@@ -699,7 +680,7 @@ class Feedback():
         self.room = 0
         self.forward = "forward"
         self.turn = ""
-        arrived = "flite -t 'You have arrived at room " + str(self.room) + ".'"
+        self.arrived = "flite -t 'You have arrived at room " + str(self.room) + ".'"
         self.first_call = False
         self.room = 0     # used for giving the name of the room number (may not be required)
         self.turn_left_tts = 'flite -t "Turn left." '
@@ -720,12 +701,12 @@ class Feedback():
 
 
     def update_room(self, room):
-        self.arrived_tts = "flite -t 'You have arrived at room " + str(self.room) + ".'"
-        self.current_dest_tts = "flite -t 'Your current destination is room " + str(self.room) + ".'"
-        self.get_confirm_dest_tts = "flite -t 'The selected destination is " + str(self.room) + ". Please confirm.'"
-        self.confirm_dest_tts = "flite -t 'You have selected room " + str(self.room) + ". Scanning for current position.'"
-        self.start_node = "flite -t 'You are currently standing by room " + str(self.room) + ". Plotting course.'"
-        self.room_change_tts = "flite -t 'Room " + str(self.room) + ".'"
+        self.arrived_tts = "flite -t 'You have arrived at room " + str(room) + ".'"
+        self.current_dest_tts = "flite -t 'Your current destination is room " + str(room) + ".'"
+        self.get_confirm_dest_tts = "flite -t 'The selected destination is " + str(room) + ". Please confirm.'"
+        self.confirm_dest_tts = "flite -t 'You have selected room " + str(room) + ". Scanning for current position.'"
+        self.start_node = "flite -t 'You are currently standing by room " + str(room) + ". Plotting course.'"
+        self.room_change_tts = "flite -t 'Room " + str(room) + ".'"
     
         
     # direct(self)
@@ -740,7 +721,7 @@ class Feedback():
         dispy = 0
         path_length = len(self.new_path)
             
-        if path_length >= 2:
+        if path_length > 2:
             self.poi_next = self.new_path[1]
             if path_length > 2:
                 self.poi_last = self.new_path[2]
@@ -755,44 +736,45 @@ class Feedback():
                 self.prev_path = self.new_path
                 # from 0 to 1 indluded
                 for index in range(2):
-                    self.displacement[index] = self.graph[(self.poi_next, self.poi_last)][index] - self.graph[(self.poi_start, self.poi_next)][index]
+                    self.displacement[index] = math.sqrt(self.graph[(self.poi_next, self.poi_last)][index]**2) - math.sqrt(self.graph[(self.poi_start, self.poi_next)][index]**2)
                     if index == 1:
                         dispx = self.displacement[index-1]
                         dispy = self.displacement[index]
-                        if dispx == 0 or dispy == 0:
+                        print(dispx, dispy)
+                        if dispx == 0 and dispy == 0:
                             self.turn = self.forward
-                        elif dispx > 0 and dispy > 0:
+                        elif dispx >= 0 and dispy >= 0:
                             self.turn = self.left
-                            
-                        elif dispx > 0 and dispy < 0:
+                        elif dispx >= 0 and dispy <= 0:
                             self.turn = self.right
-                        elif dispx < 0 and dispy > 0:
+                        elif dispx <= 0 and dispy >= 0:
                             self.turn = self.right
-                        elif dispx < 0 and dispy < 0:
+                        elif dispx <= 0 and dispy <= 0:
                             self.turn = self.left
 
-            # Path has two points: if they are the same, destination has been reached
-            elif path_length == 2:
-                # one case is that you have arrived
-                if self.poi_next == self.poi_start:
-                    self.turn = self.arrived
-                # the other case worth noting is when the second value (i.e.destination)
-                # from the old path is not the same as the destination in the new path
-                elif self.poi_next is not self.prev_path[1]:
-                    self.turn = self.turn_around
-                # the third circumstance is when the user hadn't moved and re-scanned the node
-                else:
-                    self.turn = self.forward
 
+        # Path has two points: if they are the same, destination has been reached
+        elif path_length == 2:
+            self.poi_next = self.new_path[1]
+            # one case is that you have arrived
+            if self.poi_next == self.poi_start:
+                self.turn = self.arrived
+            # the other case worth noting is when the second value (i.e.destination)
+            # from the old path is not the same as the destination in the new path
+            elif self.poi_next is not self.prev_path[1]:
+                self.turn = self.turn_around
+            # the third circumstance is when the user hadn't moved and re-scanned the node
+            else:
+                self.turn = self.forward
+        
         # there is only one or no values, which should not happen
         else:
-            if path_length == 1 and self.poi_start == self.prev_path[0]:
+            if path_length == 1 and self.poi_start == self.new_path[0]:
                 self.turn = self.arrived
 
             else:
                 self.turn = self.choose_dest
 
-        return self.turn
 
     ## Process Orientation
     #  sets self.turn to give feedback to user based on magnetometer readings
@@ -1714,37 +1696,37 @@ class MPU9250:
                     for ACC_GYRO in range (int(acc_gyro_samples)):
                         if readAcc is True:    
                             accel = MPU9250.readAccel(self)
-                            averageReadings[0] = averageReadings[0] + accel['x']
-                            averageReadings[1] = averageReadings[1] + accel['y']
-                            averageReadings[2] = averageReadings[2] + accel['z']
+                            averageReadings[0] = averageReadings[0] + accel[0]
+                            averageReadings[1] = averageReadings[1] + accel[1]
+                            averageReadings[2] = averageReadings[2] + accel[2]
 
                         if readGyro is True:
                             gyro = MPU9250.readGyro(self)
-                            averageReadings[3] = averageReadings[3] + gyro['x']
-                            averageReadings[4] = averageReadings[4] + gyro['y']
-                            averageReadings[5] = averageReadings[5] + gyro['z']
+                            averageReadings[3] = averageReadings[3] + gyro[0]
+                            averageReadings[4] = averageReadings[4] + gyro[1]
+                            averageReadings[5] = averageReadings[5] + gyro[2]
                         
                         time.sleep(sample_delay) # 200Hz sample rate from SMPLRT_DIV, 0x04 line
                     # set as parent loop, as it is slower. wait for the time required fo gyro/acc to stabilize
                 mag = MPU9250.readMagnet(self)
-                averageReadings[6] = averageReadings[6] + mag['x']
-                averageReadings[7] = averageReadings[7] + mag['y']
-                averageReadings[8] = averageReadings[8] + mag['z']
+                averageReadings[6] = averageReadings[6] + mag[0]
+                averageReadings[7] = averageReadings[7] + mag[1]
+                averageReadings[8] = averageReadings[8] + mag[2]
             
         elif readMag is False:
             #Starting at 1 and going to 40 (40 readings)
             for ACC_GYRO in range (acc_gyro_samples):
                 if readAcc is True:    
                     accel = mpu9250.readAccel()
-                    averageReadings[0] = averageReadings[0] + this.accel['x']
-                    averageReadings[1] = averageReadings[1] + this.accel['y']
-                    averageReadings[2] = averageReadings[2] + this.accel['z']
+                    averageReadings[0] = averageReadings[0] + self.accel[0]
+                    averageReadings[1] = averageReadings[1] + self.accel[1]
+                    averageReadings[2] = averageReadings[2] + self.accel[2]
 
                 if readGryo is True:
                     gyro = mpu9250.readGyro()
-                    averageReadings[3] = averageReadings[3] + this.gyro['x']
-                    averageReadings[4] = averageReadings[4] + this.gyro['y']
-                    averageReadings[5] = averageReadings[5] + this.gyro['z']
+                    averageReadings[3] = averageReadings[3] + self.gyro[0]
+                    averageReadings[4] = averageReadings[4] + self.gyro[1]
+                    averageReadings[5] = averageReadings[5] + self.gyro[2]
                 
                 time.sleep(sample_delay) # 200Hz sample rate from SMPLRT_DIV, 0x04 line
 
@@ -2023,8 +2005,12 @@ while True:
     
     # start at an arbitrary room in the nodes dictionary stored in graph
     destination = 340
-    feedback.update_room(destination)
 
+    #
+    feedback.graph = graph.vertices_2D
+    print(feedback.graph)
+
+    #
     state = 1
 
     # This state scans for initial input for a reference point on the grid
@@ -2143,23 +2129,29 @@ while True:
     # proceed to state == 3 if:
     #   qr_code is in graph.node and not destination
     while state == 2:
-        print("in state == 2")
         # scan for a QR code
-        qr_code = camera.qrGet()                  # camera.qrGet() returns a string
+        camera.qrGet()                  # camera.qrGet() returns a string
+
         # if this qr_code has a value, a qr_code was scanned
         # also check if the qr_code belongs to a value on the grid
-        if (camera.resultQR is not "") and (camera.resultQR in graph.rooms.keys()):
-            
+        #
+        # ToDO: Figure out why this check is not working:
+        # if camera.resultQR in graph.rooms.keys():
+        #
+        # Once this is debugged, add the condition as a second argument in the if statement below
+        if (camera.resultQR is not "") and camera.resultQR in graph.nodes:
+            qr_code = camera.resultQR
+            print(camera.resultQR)
             # expected values
             if qr_code is not end_node:
                 
                 #might need to check if the qr_code is the same as destination, but I think that shortest_path already does this
-                distance, feedback.new_path = shortest_path(graph, qr_code, destination)
+                distance, feedback.new_path = shortest_path(graph, qr_code, end_node)
                 
                 feedback.prev_path = feedback.new_path  # only do this without processing the new_path first in state 2
 
                 # get the starting node and save it to feedback.room in order to
-                feedback.room = graph.get_room(new_path[0])
+                feedback.room = graph.get_room(feedback.new_path[0])
                 
                 # tell the user where they are starting
                 os.system(feedback.start_node)
@@ -2169,7 +2161,12 @@ while True:
                 
                 # set user in correct direction using readings and image matrix
                 # steps done below: change basis projection, normalize result, and set Feedback.self to some direction
-                feedback.processOrientation(imu.normalizeProjection(imu.changeOfBasis(A_x, A_y, ave_readings[6:9])))
+                x_orientaion, y_orientation = imu.changeOfBasis(A_x, A_y, ave_readings[6:9])
+                x_len, y_len = imu.normalizeProjection(x_orientaion, y_orientation)
+                feedback.processOrientation(x_len, y_len)
+                #feedback.processOrientation(imu.normalizeProjection(imu.changeOfBasis(A_x, A_y, ave_readings[6:9])))
+                
+
                 
                 # provide tts feedback
                 if feedback.turn == feedback.forward:
@@ -2222,21 +2219,24 @@ while True:
     # providing haptic feedback
     # once destination == current_node (origin), got to state 3
     while state == 3:
+        print("State = 3!")
         # scan for a QR code
         camera.qrGet()                  # camera.qrGet() returns a string
 
         # if this qr_code has a value, a qr_code was scanned
         # also check if the qr_code belongs to a value on the grid
-        if (camera.resultQR is not "") and (camera.resultQR in graph.node.keys()):
+        if (camera.resultQR is not "") and (camera.resultQR in graph.nodes):
+
+            print("Inside State 3 first if statement")
             
             # create a new path using the scanned QR-code
-            destination, feedback.new_path = shortest_path(graph, qr_code, destination)
+            destination, feedback.new_path = shortest_path(graph, qr_code, end_node)
             
             # find the direction to turn or the next command
             feedback.direct()
             feedback.process_turn()
             feedback.direct_tts()
-            haptic.process_turn(feedback.effect)
+            feedback.process_turn
             
             # if the end has been reached, go back to state == 1
             if feedback.check_turn is True:
@@ -2256,6 +2256,7 @@ while True:
         # user somehow scanned a junk QR code.
         else:
             camera.resultQR = ""
+           
             
         # check if user manually interrupts to change destination
         if GPIO.input(select_next) or GPIO.input(select_prev) or GPIO.input(select_current):
